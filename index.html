@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prestige Landscapes</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar" id="navbar">
+    <div class="nav-inner">
+      <!-- Logo -->
+      <a href="#home" class="nav-logo" aria-label="Prestige Landscapes Home">
+        <img src="logo.png" alt="Prestige Landscapes" width="107" height="107" class="nav-logo-img" />
+      </a>
+
+      <!-- Nav Links -->
+      <nav class="nav-links" id="nav-links" aria-label="Main navigation">
+        <a href="index.html" class="nav-link active" id="home-link">Home</a>
+        <a href="about.html" class="nav-link">About Us</a>
+        <a href="services.html" class="nav-link">Services</a>
+        <a href="gallery.html" class="nav-link">Gallery</a>
+        <a href="contact.html" class="nav-link">Contact</a>
+      </nav>
+
+      <!-- Nav Actions -->
+      <div class="nav-actions">
+        <a href="schedule.html" class="btn-nav-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Calendar
+        </a>
+        <div class="auth-btn-wrap">
+        <button class="btn-nav-solid" id="open-auth" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Login/Signup
+        </button>
+        <div class="user-dropdown" id="user-dropdown" hidden>
+          <button class="user-dropdown-item" id="dropdown-booked">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+            Booked
+          </button>
+          <button class="user-dropdown-item" id="dropdown-settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Settings
+          </button>
+          <button class="user-dropdown-item user-dropdown-logout" id="dropdown-logout">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Logout
+          </button>
+        </div>
+        </div>
+      </div>
+
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu" aria-expanded="false" aria-controls="nav-links">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-overlay"></div>
+    <div class="hero-arc">
+      <svg viewBox="0 0 1440 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+        <path d="M0,60 Q720,10 1440,60 L1440,60 L0,60 Z" fill="#ffffff"/>
+      </svg>
+    </div>
+    <div class="hero-content">
+      <h1 class="hero-title"><span class="hero-line">Beautiful Landscaping.</span><span class="hero-line">Exceptional Service.</span></h1>
+      <p class="hero-sub"><span class="hero-sub-line">Enhancing outdoor spaces with quality,</span><span class="hero-sub-line">integrity, and attention to detail.</span></p>
+      <a href="#contact" class="btn-hero">Request a Quote</a>
+    </div>
+  </section>
+
+  <!-- SERVICES -->
+  <section class="section-services" id="services">
+    <div class="container">
+      <div class="services-header">
+        <p class="eyebrow-blue">Prestige Landscapes</p>
+        <h2 class="services-title">Landscaping Solutions<br><span class="title-accent">Tailored to You</span></h2>
+        <div class="title-leaf" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2C6 2 3 8 3 12s3 8 9 10c6-2 9-6 9-10S18 2 12 2z" fill="#1E5CBF" opacity=".2"/><path d="M12 4c-3 3-3 6-3 8s1 4 3 6c2-2 3-4 3-6s0-5-3-8z" fill="#1E5CBF"/></svg>
+        </div>
+      </div>
+      <div class="services-grid">
+        <!-- Lawn Care -->
+        <div class="service-card">
+          <div class="service-img-wrap">
+            <img src="https://picsum.photos/id/15/400/280" alt="Neatly mowed lawn with clean edges" loading="lazy" width="400" height="280"/>
+            <div class="service-icon-badge" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 21c0 0 3-8 9-8s9 8 9 8" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M12 13V8" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M8 17c0 0 2-5 4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/><path d="M16 17c0 0-2-5-4-4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </div>
+          </div>
+          <h3>Lawn Care</h3>
+          <p>Healthy lawns start with proper care and maintenance.</p>
+        </div>
+        <!-- Hardscaping -->
+        <div class="service-card">
+          <div class="service-img-wrap">
+            <img src="https://picsum.photos/id/43/400/280" alt="Stone patio and walkway hardscaping" loading="lazy" width="400" height="280"/>
+            <div class="service-icon-badge" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="14" width="5" height="7" rx="1" fill="white"/><rect x="10" y="10" width="5" height="11" rx="1" fill="white"/><rect x="17" y="16" width="4" height="5" rx="1" fill="white"/><rect x="2" y="20" width="20" height="2" rx="1" fill="white"/></svg>
+            </div>
+          </div>
+          <h3>Hardscaping</h3>
+          <p>Beautiful, durable hardscapes built to elevate your outdoor space.</p>
+        </div>
+        <!-- Landscape Design -->
+        <div class="service-card">
+          <div class="service-img-wrap">
+            <img src="https://picsum.photos/id/75/400/280" alt="Custom garden and landscape design" loading="lazy" width="400" height="280"/>
+            <div class="service-icon-badge" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="14" width="18" height="7" rx="2" fill="white" opacity=".3"/><circle cx="8" cy="11" r="3" fill="white"/><circle cx="16" cy="9" r="3" fill="white"/><circle cx="12" cy="7" r="2.5" fill="white"/></svg>
+            </div>
+          </div>
+          <h3>Landscape Design</h3>
+          <p>Custom designs that bring your vision to life.</p>
+        </div>
+        <!-- Outdoor Lighting -->
+        <div class="service-card">
+          <div class="service-img-wrap">
+            <img src="https://picsum.photos/id/429/400/280" alt="Outdoor landscape lighting at night" loading="lazy" width="400" height="280"/>
+            <div class="service-icon-badge" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="4" stroke="white" stroke-width="2"/><path d="M12 2v2M12 18v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 10h2M20 10h2M4.22 15.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="white" stroke-width="1.5" stroke-linecap="round"/><path d="M9 17h6l-1 4H10z" fill="white" opacity=".6"/></svg>
+            </div>
+          </div>
+          <h3>Outdoor Lighting</h3>
+          <p>Highlight your landscape and enjoy your outdoor space day and night.</p>
+        </div>
+        <!-- Seasonal Services -->
+        <div class="service-card">
+          <div class="service-img-wrap">
+            <img src="https://picsum.photos/id/57/400/280" alt="Seasonal lawn and garden maintenance" loading="lazy" width="400" height="280"/>
+            <div class="service-icon-badge" aria-hidden="true">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3C8 7 6 10 6 13a6 6 0 0012 0c0-3-2-6-6-10z" fill="white" opacity=".8"/><path d="M12 13v6" stroke="white" stroke-width="2" stroke-linecap="round"/><path d="M9 16l3-3 3 3" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+          </div>
+          <h3>Seasonal Services</h3>
+          <p>Keep your property looking its best year-round.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ABOUT + CONTACT + CALENDAR -->
+  <section class="section-contact-cal" id="contact">
+    <div class="contact-cal-grid">
+      <!-- Built on Trust (left) -->
+      <div class="contact-cal-about" id="about">
+        <h2 class="split-title">Built on Trust.<br>Focused on Quality.</h2>
+        <div class="split-divider" aria-hidden="true"></div>
+        <p class="split-body">At Prestige Landscapes, we take pride in delivering dependable service, quality workmanship, and stunning results on every project. From first consultation to final walkthrough, we're committed to exceeding your expectations.</p>
+        <a href="#" class="btn-outline-white btn-inactive" onclick="return false;">Learn More About Us</a>
+      </div>
+      <!-- Form (middle) -->
+      <div class="contact-cal-form" id="schedule">
+        <h2 class="contact-title">Get in Touch</h2>
+        <p class="contact-sub">Let's bring your outdoor vision to life.</p>
+        <form class="contact-form" id="contact-form" novalidate aria-label="Contact form">
+          <!-- Name -->
+          <div class="cform-group">
+            <div style="display:flex;gap:.5rem;">
+              <input type="text" id="cf-fname" name="fname" placeholder="First Name" autocomplete="given-name" required aria-required="true" style="flex:1;" />
+              <input type="text" id="cf-lname" name="lname" placeholder="Last Name" autocomplete="family-name" required aria-required="true" style="flex:1;" />
+            </div>
+            <span class="cfield-error" id="cf-name-error" role="alert"></span>
+          </div>
+          <!-- Email -->
+          <div class="cform-group">
+            <label for="cf-email" class="sr-only">Email Address</label>
+            <input type="email" id="cf-email" name="email" placeholder="Email" autocomplete="email" required aria-required="true"/>
+            <span class="cfield-error" id="cf-email-error" role="alert"></span>
+          </div>
+          <!-- Phone -->
+          <div class="cform-group">
+            <label for="cf-phone" class="sr-only">Phone Number</label>
+            <input type="tel" id="cf-phone" name="phone" placeholder="Phone" autocomplete="tel" required aria-required="true"/>
+            <span class="cfield-error" id="cf-phone-error" role="alert"></span>
+          </div>
+          <!-- Street | Postal Code -->
+          <div class="cform-group">
+            <div style="display:flex;gap:.5rem;">
+              <input type="text" id="cf-street" name="street" placeholder="Street" autocomplete="street-address" style="flex:2;" />
+              <input type="text" id="cf-zip" name="zip" placeholder="Postal Code" autocomplete="postal-code" style="flex:1;" />
+            </div>
+          </div>
+          <!-- Date picker -->
+          <div class="cform-group">
+            <div class="date-time-picker" id="date-time-picker"></div>
+            <input type="hidden" id="cf-date" name="date"/>
+            <span class="cfield-error" id="cf-date-error" role="alert"></span>
+          </div>
+          <!-- Service -->
+          <div class="cform-group">
+            <label for="cf-service" class="sr-only">Service Needed</label>
+            <select id="cf-service" name="service" required aria-required="true">
+              <option value="">Select a service…</option>
+              <option value="lawn">Lawn Care</option>
+              <option value="hardscape">Hardscaping</option>
+              <option value="design">Landscape Design</option>
+              <option value="lighting">Outdoor Lighting</option>
+              <option value="seasonal">Seasonal Services</option>
+              <option value="other">Other</option>
+            </select>
+            <span class="cfield-error" id="cf-service-error" role="alert"></span>
+          </div>
+          <!-- Message -->
+          <div class="cform-group">
+            <label for="cf-message" class="sr-only">Message</label>
+            <textarea id="cf-message" name="message" rows="4" placeholder="How can we help you?"></textarea>
+          </div>
+          <button type="submit" class="btn-send" id="send-btn">
+            <span class="send-text">Send Message</span>
+            <span class="send-spinner" hidden aria-hidden="true">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" class="spinner-svg"><circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="2.5" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"/></svg>
+              Sending…
+            </span>
+          </button>
+        </form>
+      </div>
+      <!-- Calendar (right) -->
+      <div class="contact-cal-right">
+        <h2 class="contact-title">Pick a Date</h2>
+        <p class="contact-sub">Select 2-3 dates that you are available</p>
+        <div class="calendar" id="calendar" aria-label="Booking calendar">
+          <div class="cal-header">
+            <button class="cal-nav" id="cal-prev" aria-label="Previous month">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M13 16L7 10L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <h3 class="cal-title" id="cal-title"></h3>
+            <button class="cal-nav" id="cal-next" aria-label="Next month">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 4L13 10L7 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div class="cal-weekdays" aria-hidden="true">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+          </div>
+          <div class="cal-days" id="cal-days" role="grid" aria-label="Calendar dates"></div>
+          <p class="cal-selected-label" id="cal-selected-label"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LIGHTBOX -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Image viewer" hidden>
+    <div class="lightbox-backdrop" id="lightbox-backdrop"></div>
+    <div class="lightbox-content">
+      <button class="lightbox-close" id="lightbox-close" aria-label="Close image viewer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+      </button>
+      <button class="lightbox-prev" id="lightbox-prev" aria-label="Previous image">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <img class="lightbox-img" id="lightbox-img" src="" alt=""/>
+      <button class="lightbox-next" id="lightbox-next" aria-label="Next image">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <p class="lightbox-caption" id="lightbox-caption"></p>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="footer-main">
+      <div class="container footer-grid">
+        <div class="footer-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E5CBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <p>Proudly serving our local community<br>and surrounding areas.</p>
+        </div>
+        <div class="footer-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E5CBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.65A2 2 0 012.18 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 8.17a16 16 0 006.92 6.92l1.53-1.52a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+          <a href="tel:+14845096377">(484) 509-6377</a>
+        </div>
+        <div class="footer-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E5CBF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <a href="mailto:Presscapes@gmail.com">Presscapes@gmail.com</a>
+        </div>
+        <div class="footer-item footer-socials">
+          <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Facebook">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+          </a>
+          <a href="https://www.instagram.com/presscapes/" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Instagram — @presscapes">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+          </a>
+          <a href="mailto:Presscapes@gmail.com" class="social-icon" aria-label="Email us">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container">
+        <p>&copy; 2026 Prestige Landscapes. All Rights Reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- BOOKED MODAL -->
+  <div class="auth-backdrop" id="booked-backdrop" hidden></div>
+  <div class="auth-modal settings-modal" id="booked-modal" role="dialog" aria-modal="true" aria-label="My Bookings" hidden>
+    <button class="auth-close" id="booked-close" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6L18 18"/></svg>
+    </button>
+    <h2 class="settings-title">My Bookings</h2>
+    <div id="booked-list"></div>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="auth-backdrop" id="settings-backdrop" hidden></div>
+  <div class="auth-modal settings-modal" id="settings-modal" role="dialog" aria-modal="true" aria-label="Account Settings" hidden>
+    <button class="auth-close" id="settings-close" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6L18 18"/></svg>
+    </button>
+    <h2 class="settings-title">Account Settings</h2>
+    <form class="auth-form" id="form-settings">
+      <p class="settings-section-label">Personal Info</p>
+      <div class="settings-row">
+        <input type="text" id="set-fname" placeholder="First Name" autocomplete="given-name" required />
+        <input type="text" id="set-lname" placeholder="Last Name" autocomplete="family-name" required />
+      </div>
+      <input type="email" id="set-email" placeholder="Email Address" autocomplete="email" required />
+      <input type="tel" id="set-phone" placeholder="Phone Number" autocomplete="tel" />
+      <p class="settings-section-label">Address</p>
+      <div class="settings-row">
+        <input type="text" id="set-street" placeholder="Street" autocomplete="street-address" style="flex:2;" />
+        <input type="text" id="set-zip" placeholder="Postal Code" autocomplete="postal-code" style="flex:1;" />
+      </div>
+      <p class="settings-section-label">Change Password <span style="font-weight:400;opacity:.5;">(leave blank to keep current)</span></p>
+      <input type="password" id="set-pass" placeholder="New Password" autocomplete="new-password" />
+      <input type="password" id="set-confirm" placeholder="Confirm New Password" autocomplete="new-password" />
+      <button type="submit" class="auth-submit">Save Changes</button>
+    </form>
+  </div>
+
+  <!-- LOGIN / SIGNUP MODAL -->
+  <div class="auth-backdrop" id="auth-backdrop" hidden></div>
+  <div class="auth-modal" id="auth-modal" role="dialog" aria-modal="true" aria-label="Login or Sign Up" hidden>
+    <button class="auth-close" id="auth-close" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6L18 18"/></svg>
+    </button>
+    <div class="auth-logo">
+      <img src="logo.png" alt="Prestige Landscapes" width="60" height="60" />
+    </div>
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" data-tab="login">Login</button>
+      <button class="auth-tab" id="tab-signup" data-tab="signup">Sign Up</button>
+    </div>
+    <!-- No Account Found Dialog -->
+    <div class="auth-no-account" id="auth-no-account" hidden>
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FC8181" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p id="auth-no-account-msg">We don't have an account under that email address.</p>
+      <div class="auth-no-account-actions">
+        <button type="button" class="auth-no-action-secondary" id="auth-change-email">Change Email</button>
+        <button type="button" class="auth-no-action-primary" id="auth-goto-signup">Sign Up</button>
+      </div>
+    </div>
+
+    <!-- Login Form -->
+    <form class="auth-form" id="form-login">
+      <input type="email" placeholder="Email address" autocomplete="email" required />
+      <input type="password" placeholder="Password" autocomplete="current-password" required />
+      <a href="#" class="auth-forgot">Forgot password?</a>
+      <button type="submit" class="auth-submit">Login</button>
+      <p class="auth-switch">Don't have an account? <button type="button" class="auth-switch-btn" data-switch="signup">Sign Up</button></p>
+    </form>
+    <!-- Signup Form -->
+    <form class="auth-form" id="form-signup" hidden>
+      <input type="text" id="auth-fname" placeholder="First Name" autocomplete="given-name" required />
+      <input type="text" id="auth-lname" placeholder="Last Name" autocomplete="family-name" required />
+      <input type="email" placeholder="Email address" autocomplete="email" required />
+      <input type="tel" id="auth-phone" placeholder="Phone number" autocomplete="tel" required />
+      <input type="password" placeholder="Password" autocomplete="new-password" required />
+      <input type="password" placeholder="Confirm password" autocomplete="new-password" required />
+      <button type="submit" class="auth-submit">Create Account</button>
+      <p class="auth-switch">Already have an account? <button type="button" class="auth-switch-btn" data-switch="login">Login</button></p>
+    </form>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

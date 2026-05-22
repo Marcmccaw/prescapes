@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "landscaping-site",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "3456", "C:\\Users\\marcm\\Documents\\landscaping-website"],
+      "port": 3456
+    }
+  ]
+}
