@@ -298,12 +298,7 @@ function getCurrentRole() {
 }
 
 function ensureInitialDev(accounts, fallbackEmail) {
-  const emails = Object.keys(accounts);
-  const hasDev = emails.some(email => normalizeRole(accounts[email].role) === 'dev');
-  if (!hasDev && emails.length === 1 && accounts[fallbackEmail]) {
-    accounts[fallbackEmail] = { ...accounts[fallbackEmail], role: 'dev' };
-    localStorage.setItem('pl_accounts', JSON.stringify(accounts));
-  }
+  return accounts?.[fallbackEmail] || null;
 }
 
 function canManageUsers() {
@@ -922,7 +917,7 @@ if (formSignup) formSignup.addEventListener('submit', async e => {
     inputs[5].after(err);
     return;
   }
-  let role = Object.keys(accounts).length === 0 ? 'dev' : 'client';
+  let role = 'client';
   if (window.PrestigeFirebase) {
     try {
       const result = await window.PrestigeFirebase.signUp(email, pass, { name, phone, role, street: '', zip: '' });

@@ -63,7 +63,47 @@
     </div>
   </header>
 
-  <main style="min-height:80vh;"></main>
+  <main>
+    <section class="section-calendar schedule-page-calendar" id="job-calendar">
+      <div class="container">
+        <div class="cal-section-header">
+          <p class="eyebrow-blue">Calendar</p>
+          <h1 class="cal-section-title">Scheduled Work</h1>
+          <p class="cal-section-sub">Click a marked day to see work times and job details.</p>
+        </div>
+        <div class="public-calendar-layout">
+          <div class="calendar public-calendar" aria-label="Scheduled work calendar">
+            <div class="cal-header">
+              <button class="cal-nav" id="public-cal-prev" aria-label="Previous month">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M13 16L7 10L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <h3 class="cal-title" id="public-cal-title"></h3>
+              <button class="cal-nav" id="public-cal-next" aria-label="Next month">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 4L13 10L7 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div class="cal-weekdays" aria-hidden="true">
+              <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+            </div>
+            <div class="cal-days" id="public-cal-days" role="grid" aria-label="Scheduled work dates"></div>
+          </div>
+          <aside class="public-calendar-panel" id="public-cal-panel">
+            <h3>Select a marked day</h3>
+            <p>Scheduled work will show here without client names, phone numbers, emails, or addresses.</p>
+          </aside>
+          <aside class="calendar-legend" aria-label="Calendar color key">
+            <h3>Color Key</h3>
+            <div class="legend-item"><span class="legend-swatch legend-lawn-care"></span>Lawn Care</div>
+            <div class="legend-item"><span class="legend-swatch legend-hardscaping"></span>Hardscaping</div>
+            <div class="legend-item"><span class="legend-swatch legend-landscaping"></span>Landscaping</div>
+            <div class="legend-item"><span class="legend-swatch legend-outdoor-lighting"></span>Outdoor Lighting</div>
+            <div class="legend-item"><span class="legend-swatch legend-seasonal-services"></span>Seasonal Services</div>
+            <div class="legend-item"><span class="legend-swatch legend-other"></span>Other</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <script>
     const navbar = document.getElementById('navbar');
@@ -83,6 +123,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-sync.js"></script>
+  <script src="public-calendar.js"></script>
   <script src="account.js"></script>
 </body>
 </html>

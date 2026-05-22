@@ -27,14 +27,7 @@ function getCurrentRole() {
 }
 
 function ensureInitialDev() {
-  const accounts = getAccounts();
-  const currentEmail = getCurrentUserEmail();
-  const emails = Object.keys(accounts);
-  const hasDev = emails.some(email => accounts[email]?.role === 'dev');
-  if (!hasDev && emails.length === 1 && accounts[currentEmail]) {
-    accounts[currentEmail] = { ...accounts[currentEmail], role: 'dev' };
-    localStorage.setItem('pl_accounts', JSON.stringify(accounts));
-  }
+  return null;
 }
 
 function getSubmissions() {

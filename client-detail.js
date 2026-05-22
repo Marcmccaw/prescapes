@@ -328,7 +328,7 @@ function renderLead(lead) {
       <div class="quoting-field q-only" ${currentSt !== 'Quoting' ? 'hidden' : ''}>
         <label>Job Type</label>
         <div class="quoting-checkboxes" id="q-type">
-          ${['Hardscaping','Lawn Care','Landscape Design','Outdoor Lighting','Seasonal Services'].map(t => `
+          ${['Hardscaping','Lawn Care','Landscaping','Outdoor Lighting','Seasonal Services'].map(t => `
             <label class="quoting-checkbox-label">
               <input type="checkbox" value="${t}" ${(q.types || []).includes(t) ? 'checked' : ''} />
               ${t}
@@ -450,6 +450,7 @@ function renderLead(lead) {
 
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   let jobDates = [...(q.jobDates || [])];
+  let jobDateValues = [...(q.jobDateValues || [])];
 
   // Sync job type checkboxes → service field on ticket
   document.querySelectorAll('#q-type input[type="checkbox"]').forEach(cb => {
@@ -483,7 +484,9 @@ function renderLead(lead) {
       tag.className = 'quoting-date-tag';
       tag.innerHTML = `${d} <button type="button" data-i="${i}" aria-label="Remove ${d}">×</button>`;
       tag.querySelector('button').addEventListener('click', e => {
-        jobDates.splice(parseInt(e.target.dataset.i), 1);
+        const index = parseInt(e.target.dataset.i);
+        jobDates.splice(index, 1);
+        jobDateValues.splice(index, 1);
         renderDateTags();
       });
       container.appendChild(tag);
@@ -497,7 +500,11 @@ function renderLead(lead) {
     if (!picker?.value) return;
     const [year, month, day] = picker.value.split('-').map(Number);
     const label = `${MONTH_NAMES[month-1]} ${day}`;
-    if (!jobDates.includes(label)) { jobDates.push(label); renderDateTags(); }
+    if (!jobDateValues.includes(picker.value)) {
+      jobDates.push(label);
+      jobDateValues.push(picker.value);
+      renderDateTags();
+    }
     picker.value = '';
   });
 
@@ -515,6 +522,7 @@ function renderLead(lead) {
         visitTime: document.getElementById('q-time-single')?.value || '',
         // Booked fields
         jobDates,
+        jobDateValues,
         timeStart: document.getElementById('q-time-start')?.value || '',
         timeEnd: document.getElementById('q-time-end')?.value || '',
         extras: document.getElementById('q-extras')?.value || ''

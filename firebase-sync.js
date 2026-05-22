@@ -88,6 +88,14 @@
     return submissions;
   }
 
+  async function loadPublicJobs() {
+    const snapshot = await db.collection('public_jobs').get();
+    const jobs = [];
+    snapshot.forEach(doc => jobs.push({ id: doc.id, ...(doc.data() || {}) }));
+    setLocal('pl_public_jobs', jobs);
+    return jobs;
+  }
+
   async function loadBookings() {
     const snapshot = await db.collection('bookings').get();
     snapshot.forEach(doc => {
@@ -100,6 +108,7 @@
 
   async function syncNow() {
     try {
+      await loadPublicJobs();
       const localAccounts = safeJson(localStorage.getItem('pl_accounts'), {});
       const localSubmissions = safeJson(localStorage.getItem('pl_client_submissions'), []);
       const localBookingEntries = Object.keys(localStorage)
@@ -107,6 +116,7 @@
         .map(key => [bookingKeyToEmail(key), safeJson(localStorage.getItem(key), [])]);
 
       const [remoteAccounts, remoteSubmissions, remoteBookingCount] = await Promise.all([loadAccounts(), loadSubmissions(), loadBookings()]);
+      remoteSubmissions.forEach(submission => savePublicJob(submission, submission.id));
 
       if (Object.keys(remoteAccounts).length === 0 && Object.keys(localAccounts).length > 0) {
         setLocal('pl_accounts', localAccounts);
@@ -132,6 +142,7 @@
   }
 
   function startListeners() {
+    db.collection('public_jobs').onSnapshot(loadPublicJobs, err => console.warn('Public job listener failed:', err));
     db.collection('accounts').onSnapshot(loadAccounts, err => console.warn('Account listener failed:', err));
     db.collection('client_submissions').onSnapshot(loadSubmissions, err => console.warn('Submission listener failed:', err));
     db.collection('bookings').onSnapshot(loadBookings, err => console.warn('Booking listener failed:', err));
@@ -156,7 +167,34 @@
         ...submission,
         id
       }), { merge: true }).catch(err => console.warn('Could not save submission:', err));
+      savePublicJob(submission, id);
     });
+  }
+
+  function getLeadStatus(lead) {
+    if (lead.status === 'Approved' || lead.status === 'Quoteing') return 'Quoting';
+    return ['Pending', 'Quoting', 'Booked', 'Payment', 'Completed'].includes(lead.status) ? lead.status : 'Pending';
+  }
+
+  function savePublicJob(submission, id) {
+    const status = getLeadStatus(submission);
+    const q = submission.quoting || {};
+    const hasDates = (Array.isArray(q.jobDateValues) && q.jobDateValues.length > 0) || (Array.isArray(q.jobDates) && q.jobDates.length > 0);
+    const ref = db.collection('public_jobs').doc(id);
+    if (!['Booked', 'Payment'].includes(status) || !hasDates) {
+      ref.delete().catch(() => {});
+      return;
+    }
+    ref.set(withMeta({
+      leadId: id,
+      status,
+      service: submission.service || 'Scheduled Work',
+      description: q.job || 'Job details will be updated soon.',
+      jobDateValues: Array.isArray(q.jobDateValues) ? q.jobDateValues : [],
+      jobDates: Array.isArray(q.jobDates) ? q.jobDates : [],
+      timeStart: q.timeStart || '',
+      timeEnd: q.timeEnd || ''
+    }), { merge: true }).catch(err => console.warn('Could not save public job:', err));
   }
 
   function saveBookings(email, bookings) {
@@ -208,8 +246,8 @@
     async signUp(email, password, account) {
       const cleanEmail = normalizeEmail(email);
       const credential = await auth.createUserWithEmailAndPassword(cleanEmail, password);
-      const accounts = await loadAccounts();
-      const role = Object.keys(accounts).length === 0 ? 'dev' : (account.role || 'client');
+      await loadAccounts();
+      const role = account.role || 'client';
       await db.collection('accounts').doc(cleanEmail).set({
         ...account,
         email: cleanEmail,
@@ -247,6 +285,7 @@
     async deleteSubmission(id) {
       if (!id) return;
       await db.collection('client_submissions').doc(id).delete();
+      await db.collection('public_jobs').doc(id).delete().catch(() => {});
       await syncNow();
     },
     async deleteAccount(email) {
