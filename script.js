@@ -49,6 +49,33 @@ const authChangeEmail = document.getElementById('auth-change-email');
 const authGotoSignup = document.getElementById('auth-goto-signup');
 
 // User dropdown
+// Link any existing tickets that match this user's email or phone
+function linkExistingTickets(email, phone) {
+  const submissions = JSON.parse(localStorage.getItem('pl_client_submissions') || '[]');
+  const bookings = JSON.parse(localStorage.getItem(`pl_bookings_${email}`) || '[]');
+  const existingIds = new Set(bookings.map(b => b.leadId || b.id).filter(Boolean));
+
+  submissions.forEach(ticket => {
+    const matchEmail = ticket.email && ticket.email.toLowerCase() === email.toLowerCase();
+    const matchPhone = phone && ticket.phone && ticket.phone.replace(/\D/g,'') === phone.replace(/\D/g,'');
+    if ((matchEmail || matchPhone) && !existingIds.has(ticket.id)) {
+      bookings.unshift({
+        leadId: ticket.id,
+        submittedOn: ticket.submittedAt
+          ? new Date(ticket.submittedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+          : 'Unknown date',
+        service: ticket.service || 'General Inquiry',
+        dates: ticket.dates || '',
+      });
+      existingIds.add(ticket.id);
+    }
+  });
+
+  if (bookings.length > 0) {
+    localStorage.setItem(`pl_bookings_${email}`, JSON.stringify(bookings));
+  }
+}
+
 function autofillContactForm() {
   if (!currentUserEmail) return;
   const acc = getAccounts()[currentUserEmail];
@@ -79,10 +106,14 @@ function setLoggedInUser(name) {
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     ${firstName}${lastInitial}
   `;
+  updateUserAdminVisibility();
 }
 
 function logout() {
   isLoggedIn = false;
+  currentUserEmail = null;
+  localStorage.removeItem('pl_current_user');
+  updateUserAdminVisibility();
   const btn = document.getElementById('open-auth');
   if (!btn) return;
   btn.innerHTML = `
@@ -119,10 +150,31 @@ const bookedList = document.getElementById('booked-list');
 const dropdownBooked = document.getElementById('dropdown-booked');
 
 function getBookings() { return JSON.parse(localStorage.getItem(`pl_bookings_${currentUserEmail}`) || '[]'); }
-function saveBooking(booking) {
-  const bookings = getBookings();
+function getBookingsForEmail(email) { return JSON.parse(localStorage.getItem(`pl_bookings_${email}`) || '[]'); }
+function saveBookingForEmail(email, booking) {
+  const bookings = getBookingsForEmail(email);
   bookings.unshift(booking);
-  localStorage.setItem(`pl_bookings_${currentUserEmail}`, JSON.stringify(bookings));
+  localStorage.setItem(`pl_bookings_${email}`, JSON.stringify(bookings));
+}
+function saveBooking(booking) { saveBookingForEmail(currentUserEmail, booking); }
+function getClientPanelSubmissions() { return JSON.parse(localStorage.getItem('pl_client_submissions') || '[]'); }
+function saveClientPanelSubmission(submission) {
+  const submissions = getClientPanelSubmissions();
+  submissions.unshift(submission);
+  localStorage.setItem('pl_client_submissions', JSON.stringify(submissions));
+}
+function removeClientPanelSubmission(booking) {
+  const submissions = getClientPanelSubmissions();
+  const bookingLeadId = booking.leadId || booking.id;
+  const filtered = submissions.filter(submission => {
+    if (bookingLeadId) return submission.id !== bookingLeadId;
+    return !(
+      (submission.email === currentUserEmail || submission.accountEmail === currentUserEmail) &&
+      submission.service === booking.service &&
+      submission.dates === booking.dates
+    );
+  });
+  localStorage.setItem('pl_client_submissions', JSON.stringify(filtered));
 }
 
 function openBooked() {
@@ -163,7 +215,8 @@ function openBooked() {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
         const bookings = getBookings();
-        bookings.splice(idx, 1);
+        const [removedBooking] = bookings.splice(idx, 1);
+        if (removedBooking) removeClientPanelSubmission(removedBooking);
         localStorage.setItem(`pl_bookings_${currentUserEmail}`, JSON.stringify(bookings));
         openBooked();
       });
@@ -202,12 +255,90 @@ if (dropdownBooked) dropdownBooked.addEventListener('click', () => { userDropdow
 
 const dropdownSettings = document.getElementById('dropdown-settings');
 const dropdownLogout = document.getElementById('dropdown-logout');
+const dropdownUsers = document.getElementById('dropdown-users');
+const dropdownClientPanel = document.getElementById('dropdown-client-panel');
 // ---- Settings Modal ----
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsModal = document.getElementById('settings-modal');
 const settingsClose = document.getElementById('settings-close');
 const formSettings = document.getElementById('form-settings');
+const usersBackdrop = document.getElementById('users-backdrop');
+const usersModal = document.getElementById('users-modal');
+const usersClose = document.getElementById('users-close');
+const usersList = document.getElementById('users-list');
+const usersHelp = document.getElementById('users-help');
+const usersSearch = document.getElementById('users-search');
 let currentUserEmail = null;
+let editingClientEmail = null;
+const USER_ROLES = ['dev', 'manager', 'staff', 'client'];
+const ROLE_LABELS = {
+  dev: 'Dev',
+  manager: 'Manager',
+  staff: 'Staff',
+  client: 'Client'
+};
+
+function normalizeRole(role) {
+  return USER_ROLES.includes(role) ? role : 'client';
+}
+
+function getCurrentAccount() {
+  if (!currentUserEmail) return null;
+  return getAccounts()[currentUserEmail] || null;
+}
+
+function getCurrentRole() {
+  return normalizeRole(getCurrentAccount()?.role);
+}
+
+function ensureInitialDev(accounts, fallbackEmail) {
+  const emails = Object.keys(accounts);
+  const hasDev = emails.some(email => normalizeRole(accounts[email].role) === 'dev');
+  if (!hasDev && emails.length === 1 && accounts[fallbackEmail]) {
+    accounts[fallbackEmail] = { ...accounts[fallbackEmail], role: 'dev' };
+    localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+  }
+}
+
+function canManageUsers() {
+  return ['dev', 'manager'].includes(getCurrentRole());
+}
+
+function getAssignableRoles() {
+  const role = getCurrentRole();
+  if (role === 'dev') return ['manager', 'staff', 'client'];
+  if (role === 'manager') return ['staff', 'client'];
+  return [];
+}
+
+function canManageTarget(targetEmail, targetRole) {
+  const currentRole = getCurrentRole();
+  const normalizedTargetRole = normalizeRole(targetRole);
+  if (!currentUserEmail || targetEmail === currentUserEmail) return false;
+  if (currentRole === 'dev') return normalizedTargetRole !== 'dev';
+  if (currentRole === 'manager') return ['staff', 'client'].includes(normalizedTargetRole);
+  return false;
+}
+
+function canEditClientInfo(targetRole) {
+  return canManageUsers() && normalizeRole(targetRole) === 'client';
+}
+
+function updateUserAdminVisibility() {
+  const allowed = canManageUsers();
+  if (dropdownUsers) {
+    dropdownUsers.hidden = !allowed;
+    dropdownUsers.disabled = !allowed;
+    dropdownUsers.setAttribute('aria-hidden', String(!allowed));
+    dropdownUsers.style.display = allowed ? '' : 'none';
+  }
+  if (dropdownClientPanel) {
+    dropdownClientPanel.hidden = !allowed;
+    dropdownClientPanel.setAttribute('aria-hidden', String(!allowed));
+    dropdownClientPanel.style.display = allowed ? '' : 'none';
+  }
+  if (!allowed && usersModal && !usersModal.hidden) closeUsers();
+}
 
 function openSettings() {
   if (!currentUserEmail) return;
@@ -219,6 +350,7 @@ function openSettings() {
   document.getElementById('set-lname').value = nameParts.slice(1).join(' ') || '';
   document.getElementById('set-email').value = currentUserEmail;
   document.getElementById('set-phone').value = acc.phone || '';
+  document.getElementById('set-role').value = normalizeRole(acc.role);
   document.getElementById('set-street').value = acc.street || '';
   document.getElementById('set-zip').value = acc.zip || '';
   document.getElementById('set-pass').value = '';
@@ -235,6 +367,53 @@ function closeSettings() {
 }
 
 if (settingsClose) settingsClose.addEventListener('click', closeSettings);
+
+// Generic confirm for user management
+let userConfirmCallback = null;
+function showUserConfirm(message, onConfirm) {
+  const modal = document.getElementById('confirm-delete-modal');
+  const backdrop = document.getElementById('confirm-delete-backdrop');
+  const msg = modal?.querySelector('.confirm-delete-msg');
+  const title = modal?.querySelector('.confirm-delete-title');
+  if (msg) msg.textContent = message;
+  if (title) title.textContent = 'Are you sure?';
+  userConfirmCallback = onConfirm;
+  if (backdrop) backdrop.hidden = false;
+  if (modal) modal.hidden = false;
+}
+
+const confirmDeleteBackdrop = document.getElementById('confirm-delete-backdrop');
+const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+
+function openConfirmDelete() {
+  confirmDeleteBackdrop.hidden = false;
+  confirmDeleteModal.hidden = false;
+}
+function closeConfirmDelete() {
+  confirmDeleteBackdrop.hidden = true;
+  confirmDeleteModal.hidden = true;
+}
+
+document.getElementById('delete-account-btn')?.addEventListener('click', openConfirmDelete);
+document.getElementById('confirm-delete-cancel')?.addEventListener('click', closeConfirmDelete);
+confirmDeleteBackdrop?.addEventListener('click', closeConfirmDelete);
+
+document.getElementById('confirm-delete-confirm')?.addEventListener('click', () => {
+  if (userConfirmCallback) {
+    userConfirmCallback();
+    userConfirmCallback = null;
+    closeConfirmDelete();
+    return;
+  }
+  const accounts = getAccounts();
+  delete accounts[currentUserEmail];
+  localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+  localStorage.removeItem(`pl_bookings_${currentUserEmail}`);
+  localStorage.removeItem('pl_current_user');
+  closeConfirmDelete();
+  closeSettings();
+  logout();
+});
 if (settingsBackdrop) settingsBackdrop.addEventListener('click', closeSettings);
 
 if (formSettings) formSettings.addEventListener('submit', e => {
@@ -262,7 +441,7 @@ if (formSettings) formSettings.addEventListener('submit', e => {
   const newAcc = {
     ...acc,
     name: `${fname} ${lname}`.trim(),
-    phone, street, zip,
+    phone, role: normalizeRole(acc.role), street, zip,
     password: pass || acc.password
   };
 
@@ -273,6 +452,7 @@ if (formSettings) formSettings.addEventListener('submit', e => {
   accounts[email] = newAcc;
   currentUserEmail = email;
   localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+  saveCurrentUser(email);
   setLoggedInUser(newAcc.name);
   closeSettings();
   autofillContactForm();
@@ -287,14 +467,288 @@ if (dropdownLogout) dropdownLogout.addEventListener('click', () => {
   logout();
 });
 
+function openUsers() {
+  if (!canManageUsers()) return;
+  if (usersSearch) usersSearch.value = '';
+  editingClientEmail = null;
+  renderUsers();
+  usersBackdrop.hidden = false;
+  usersModal.hidden = false;
+  document.body.style.overflow = 'hidden';
+}
+
+function closeUsers() {
+  usersBackdrop.hidden = true;
+  usersModal.hidden = true;
+  document.body.style.overflow = '';
+  editingClientEmail = null;
+}
+
+function renderUsers() {
+  const accounts = getAccounts();
+  const assignableRoles = getAssignableRoles();
+  const currentRole = getCurrentRole();
+  usersHelp.textContent = currentRole === 'dev'
+    ? 'Devs can assign Manager, Staff, or Client roles.'
+    : 'Managers can assign Staff or Client roles.';
+  usersList.innerHTML = '';
+  const query = (usersSearch?.value || '').trim().toLowerCase();
+
+  const entries = Object.entries(accounts)
+    .filter(([email, account]) => {
+      if (!query) return true;
+      const role = ROLE_LABELS[normalizeRole(account.role)];
+      return [account.name, email, account.phone, role]
+        .some(value => String(value || '').toLowerCase().includes(query));
+    })
+    .sort((a, b) => {
+      const nameA = a[1].name || a[0];
+      const nameB = b[1].name || b[0];
+      return nameA.localeCompare(nameB);
+    });
+
+  if (entries.length === 0) {
+    usersList.innerHTML = `<p class="booked-empty">${query ? 'No users match that search.' : 'No users found yet.'}</p>`;
+    return;
+  }
+
+  entries.forEach(([email, account]) => {
+    const role = normalizeRole(account.role);
+    const item = document.createElement('div');
+    item.className = 'user-admin-item';
+
+    const summary = document.createElement('div');
+    summary.className = 'user-admin-summary';
+    const info = document.createElement('div');
+    const nameEl = document.createElement('div');
+    nameEl.className = 'user-admin-name';
+    nameEl.textContent = account.name || 'Unnamed User';
+    const emailEl = document.createElement('div');
+    emailEl.className = 'user-admin-email';
+    emailEl.textContent = email;
+    const roleEl = document.createElement('div');
+    roleEl.className = 'user-admin-role';
+    roleEl.textContent = ROLE_LABELS[role];
+    info.append(nameEl, emailEl, roleEl);
+
+    const controls = document.createElement('div');
+    controls.className = 'user-admin-actions';
+
+    const select = document.createElement('select');
+    const canEdit = canManageTarget(email, role);
+    const options = canEdit ? assignableRoles : [role];
+    options.forEach(optionRole => {
+      const option = document.createElement('option');
+      option.value = optionRole;
+      option.textContent = ROLE_LABELS[optionRole];
+      option.selected = optionRole === role;
+      select.appendChild(option);
+    });
+    select.disabled = !canEdit;
+    select.setAttribute('aria-label', `User type for ${account.name || email}`);
+
+    if (canEdit) {
+      select.addEventListener('change', () => {
+        accounts[email] = { ...account, role: normalizeRole(select.value) };
+        localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+        if (editingClientEmail === email && normalizeRole(select.value) !== 'client') {
+          editingClientEmail = null;
+        }
+        renderUsers();
+      });
+    }
+
+    controls.appendChild(select);
+
+    if (canEditClientInfo(role)) {
+      const editToggle = document.createElement('button');
+      editToggle.type = 'button';
+      editToggle.className = 'user-edit-toggle';
+      editToggle.textContent = editingClientEmail === email ? 'Close' : 'Edit';
+      editToggle.addEventListener('click', () => {
+        editingClientEmail = editingClientEmail === email ? null : email;
+        renderUsers();
+      });
+      controls.appendChild(editToggle);
+    }
+
+    // Delete button — can't delete yourself or devs
+    if (canEdit && email !== currentUserEmail) {
+      const deleteBtn = document.createElement('button');
+      deleteBtn.type = 'button';
+      deleteBtn.className = 'user-delete-btn';
+      deleteBtn.setAttribute('aria-label', `Delete ${account.name || email}`);
+      deleteBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+      deleteBtn.addEventListener('click', () => {
+        showUserConfirm(`Delete account for ${account.name || email}? This cannot be undone.`, () => {
+          const fresh = getAccounts();
+          delete fresh[email];
+          localStorage.setItem('pl_accounts', JSON.stringify(fresh));
+          localStorage.removeItem(`pl_bookings_${email}`);
+          renderUsers();
+        });
+      });
+      controls.appendChild(deleteBtn);
+    }
+
+    summary.appendChild(info);
+    summary.appendChild(controls);
+    item.appendChild(summary);
+
+    if (editingClientEmail === email && canEditClientInfo(role)) {
+      item.appendChild(buildClientEditForm(email, account));
+    }
+
+    usersList.appendChild(item);
+  });
+}
+
+function buildClientEditForm(email, account) {
+  const form = document.createElement('form');
+  form.className = 'user-edit-form';
+  form.noValidate = true;
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Full name';
+  nameInput.value = account.name || '';
+  nameInput.required = true;
+
+  const emailInput = document.createElement('input');
+  emailInput.type = 'email';
+  emailInput.placeholder = 'Email';
+  emailInput.value = email;
+  emailInput.required = true;
+
+  const phoneInput = document.createElement('input');
+  phoneInput.type = 'tel';
+  phoneInput.placeholder = 'Phone';
+  phoneInput.value = account.phone || '';
+
+  const streetInput = document.createElement('input');
+  streetInput.type = 'text';
+  streetInput.placeholder = 'Street';
+  streetInput.value = account.street || '';
+
+  const zipInput = document.createElement('input');
+  zipInput.type = 'text';
+  zipInput.placeholder = 'Postal Code';
+  zipInput.value = account.zip || '';
+
+  const message = document.createElement('p');
+  message.className = 'user-edit-message';
+
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'submit';
+  saveBtn.className = 'user-edit-save user-edit-wide';
+  saveBtn.textContent = 'Save Client Info';
+
+  form.append(nameInput, emailInput, phoneInput, streetInput, zipInput, message, saveBtn);
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const accounts = getAccounts();
+    const nextEmail = emailInput.value.trim().toLowerCase();
+    const nextName = nameInput.value.trim();
+
+    message.classList.remove('error');
+    message.textContent = '';
+
+    if (!nextName) {
+      message.textContent = 'Client name is required.';
+      message.classList.add('error');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) {
+      message.textContent = 'Enter a valid client email.';
+      message.classList.add('error');
+      return;
+    }
+    if (nextEmail !== email && accounts[nextEmail]) {
+      message.textContent = 'Another account already uses that email.';
+      message.classList.add('error');
+      return;
+    }
+
+    const updatedAccount = {
+      ...accounts[email],
+      name: nextName,
+      phone: phoneInput.value.trim(),
+      street: streetInput.value.trim(),
+      zip: zipInput.value.trim(),
+      role: 'client'
+    };
+
+    if (nextEmail !== email) {
+      delete accounts[email];
+      const oldBookingsKey = `pl_bookings_${email}`;
+      const newBookingsKey = `pl_bookings_${nextEmail}`;
+      const oldBookings = localStorage.getItem(oldBookingsKey);
+      if (oldBookings && !localStorage.getItem(newBookingsKey)) {
+        localStorage.setItem(newBookingsKey, oldBookings);
+        localStorage.removeItem(oldBookingsKey);
+      }
+      if (localStorage.getItem('pl_current_user') === email) {
+        saveCurrentUser(nextEmail);
+      }
+    }
+
+    accounts[nextEmail] = updatedAccount;
+    localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+    editingClientEmail = nextEmail;
+    renderUsers();
+  });
+
+  return form;
+}
+
+if (dropdownUsers) dropdownUsers.addEventListener('click', () => {
+  userDropdown.hidden = true;
+  openUsers();
+});
+if (usersClose) usersClose.addEventListener('click', closeUsers);
+if (usersBackdrop) usersBackdrop.addEventListener('click', closeUsers);
+if (usersSearch) usersSearch.addEventListener('input', () => {
+  editingClientEmail = null;
+  renderUsers();
+});
+
 // Account helpers using localStorage
 function getAccounts() { return JSON.parse(localStorage.getItem('pl_accounts') || '{}'); }
 function saveAccount(email, data) {
   const accounts = getAccounts();
-  accounts[email.toLowerCase()] = data;
+  accounts[email.toLowerCase()] = { ...data, role: normalizeRole(data.role) };
   localStorage.setItem('pl_accounts', JSON.stringify(accounts));
 }
 function accountExists(email) { return !!getAccounts()[email.toLowerCase()]; }
+function normalizePhone(phone) { return String(phone || '').replace(/\D/g, ''); }
+function phoneAccountExists(phone, accounts = getAccounts()) {
+  const targetPhone = normalizePhone(phone);
+  if (!targetPhone) return false;
+  return Object.values(accounts).some(account => normalizePhone(account.phone) === targetPhone);
+}
+function saveCurrentUser(email) { localStorage.setItem('pl_current_user', email.toLowerCase()); }
+
+function restoreCurrentUser() {
+  const email = localStorage.getItem('pl_current_user');
+  if (!email) return;
+  const account = getAccounts()[email];
+  if (!account) {
+    localStorage.removeItem('pl_current_user');
+    return;
+  }
+  currentUserEmail = email;
+  ensureInitialDev(getAccounts(), currentUserEmail);
+  if (!account.role) {
+    const accounts = getAccounts();
+    accounts[email] = { ...accounts[email], role: normalizeRole(accounts[email].role) };
+    localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+  }
+  setLoggedInUser(account.name);
+  linkExistingTickets(currentUserEmail, account.phone || '');
+  autofillContactForm();
+  updateUserAdminVisibility();
+}
 
 function showNoAccount(msg) {
   authNoAccount.hidden = false;
@@ -305,6 +759,17 @@ function showNoAccount(msg) {
 
 function hideNoAccount() {
   authNoAccount.hidden = true;
+}
+
+function showLoginMessage(msg, email = '') {
+  hideNoAccount();
+  switchTab('login');
+  formLogin.querySelectorAll('.auth-error').forEach(el => el.remove());
+  if (email) formLogin.querySelector('input[type="email"]').value = email;
+  const notice = document.createElement('p');
+  notice.className = 'auth-error';
+  notice.textContent = msg;
+  formLogin.querySelector('.auth-submit').before(notice);
 }
 
 if (authClose) authClose.addEventListener('click', closeModal);
@@ -345,6 +810,8 @@ if (formLogin) formLogin.addEventListener('submit', e => {
   }
   // Success
   currentUserEmail = email.toLowerCase();
+  ensureInitialDev(accounts, currentUserEmail);
+  saveCurrentUser(currentUserEmail);
   closeModal();
   setLoggedInUser(account.name);
   autofillContactForm();
@@ -354,6 +821,7 @@ if (formLogin) formLogin.addEventListener('submit', e => {
 if (formSignup) formSignup.addEventListener('submit', e => {
   e.preventDefault();
   const inputs = formSignup.querySelectorAll('input');
+  const accounts = getAccounts();
   const firstName = inputs[0].value.trim();
   const lastName = inputs[1].value.trim();
   const name = `${firstName} ${lastName}`;
@@ -365,10 +833,11 @@ if (formSignup) formSignup.addEventListener('submit', e => {
   formSignup.querySelectorAll('.auth-error').forEach(el => el.remove());
 
   if (accountExists(email)) {
-    const err = document.createElement('p');
-    err.className = 'auth-error';
-    err.textContent = 'An account with this email already exists.';
-    inputs[2].after(err);
+    showLoginMessage('An account with this email already exists. Please log in.', email);
+    return;
+  }
+  if (phoneAccountExists(phone, accounts)) {
+    showLoginMessage('A person with this phone number already has an account. Please log in.');
     return;
   }
   if (pass !== confirm) {
@@ -378,12 +847,33 @@ if (formSignup) formSignup.addEventListener('submit', e => {
     inputs[5].after(err);
     return;
   }
-  saveAccount(email, { name, phone, password: pass });
+  const role = Object.keys(accounts).length === 0 ? 'dev' : 'client';
+  saveAccount(email, { name, phone, role, password: pass });
   currentUserEmail = email.toLowerCase();
+  saveCurrentUser(currentUserEmail);
   closeModal();
   setLoggedInUser(name);
+  linkExistingTickets(currentUserEmail, phone);
   autofillContactForm();
 });
+
+restoreCurrentUser();
+
+// Auto-open modal from hash (coming from sub-pages)
+(function() {
+  const hash = window.location.hash;
+  if (hash === '#open-booked' && isLoggedIn) {
+    history.replaceState(null, '', window.location.pathname);
+    openBooked();
+  } else if (hash === '#open-settings' && isLoggedIn) {
+    history.replaceState(null, '', window.location.pathname);
+    openSettings();
+  } else if (hash === '#open-users' && isLoggedIn) {
+    history.replaceState(null, '', window.location.pathname);
+    const usersModal = document.getElementById('users-modal');
+    if (usersModal) { usersModal.hidden = false; document.getElementById('users-backdrop')?.hidden === false; renderUsers?.(); }
+  }
+})();
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !authModal.hidden) closeModal();
@@ -659,6 +1149,47 @@ const contactForm = document.getElementById('contact-form');
 const sendBtn = document.getElementById('send-btn');
 const sendText = sendBtn.querySelector('.send-text');
 const sendSpinner = sendBtn.querySelector('.send-spinner');
+const sendSuccess = sendBtn.querySelector('.send-success');
+const sendSuccessBooked = document.getElementById('send-success-booked');
+const sendSuccessBookedNote = document.getElementById('send-success-booked-note');
+const sendSuccessAccountNote = document.getElementById('send-success-account-note');
+const sendSuccessSignup = document.getElementById('send-success-signup');
+const sendSuccessLogin = document.getElementById('send-success-login');
+let lastSubmittedEmail = '';
+
+function resetSendButton() {
+  sendBtn.disabled = false;
+  sendBtn.classList.remove('btn-success');
+  sendText.hidden = false;
+  sendSpinner.hidden = true;
+  sendSuccess.hidden = true;
+  if (sendSuccessBookedNote) sendSuccessBookedNote.hidden = true;
+  if (sendSuccessAccountNote) sendSuccessAccountNote.hidden = true;
+}
+
+if (sendSuccessBooked) {
+  sendSuccessBooked.addEventListener('click', e => {
+    e.preventDefault();
+    if (currentUserEmail) {
+      openBooked();
+    } else {
+      openModal('login');
+    }
+  });
+}
+function prefillAuthEmail(form, email) {
+  const emailInput = form?.querySelector('input[type="email"]');
+  if (emailInput && email) emailInput.value = email;
+}
+
+if (sendSuccessSignup) sendSuccessSignup.addEventListener('click', () => {
+  openModal('signup');
+  prefillAuthEmail(formSignup, lastSubmittedEmail);
+});
+if (sendSuccessLogin) sendSuccessLogin.addEventListener('click', () => {
+  openModal('login');
+  prefillAuthEmail(formLogin, lastSubmittedEmail);
+});
 
 const validators = {
   'cf-fname':   v => v.trim() ? '' : 'First name is required.',
@@ -757,9 +1288,11 @@ Object.keys(validators).forEach(id => {
   const el = document.getElementById(id);
   if (el) {
     el.addEventListener('input', () => {
+      if (sendBtn.classList.contains('btn-success')) resetSendButton();
       if (el.classList.contains('error')) validateField(id);
     });
     el.addEventListener('change', () => {
+      if (sendBtn.classList.contains('btn-success')) resetSendButton();
       if (el.classList.contains('error')) validateField(id);
     });
   }
@@ -776,30 +1309,64 @@ contactForm.addEventListener('submit', async e => {
   }
 
   sendBtn.disabled = true;
+  sendBtn.classList.remove('btn-success');
   sendText.hidden = true;
   sendSpinner.hidden = false;
+  sendSuccess.hidden = true;
 
   await new Promise(r => setTimeout(r, 1200));
 
-  // Reset button back to normal
-  sendBtn.disabled = false;
-  sendText.hidden = false;
-  sendSpinner.hidden = true;
-
-  // Save booking if logged in
-  if (currentUserEmail) {
-    const serviceEl = document.getElementById('cf-service');
-    const serviceText = serviceEl ? serviceEl.options[serviceEl.selectedIndex]?.text : '';
-    saveBooking({
-      submittedOn: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      service: serviceText || 'General Inquiry',
-      dates: preferredDateInput ? preferredDateInput.value : ''
-    });
-  }
+  const submittedEmail = document.getElementById('cf-email').value.trim().toLowerCase();
+  lastSubmittedEmail = submittedEmail;
+  const bookingEmail = currentUserEmail || submittedEmail;
+  const serviceEl = document.getElementById('cf-service');
+  const serviceText = serviceEl ? serviceEl.options[serviceEl.selectedIndex]?.text : '';
+  const firstName = document.getElementById('cf-fname').value.trim();
+  const lastName = document.getElementById('cf-lname').value.trim();
+  const phone = document.getElementById('cf-phone').value.trim();
+  const street = document.getElementById('cf-street').value.trim();
+  const zip = document.getElementById('cf-zip').value.trim();
+  const message = document.getElementById('cf-message').value.trim();
+  const dates = preferredDateInput ? preferredDateInput.value : '';
+  const submittedAt = new Date();
+  const leadId = `lead_${submittedAt.getTime()}_${Math.random().toString(36).slice(2, 8)}`;
+  const booking = {
+    leadId,
+    submittedOn: submittedAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    service: serviceText || 'General Inquiry',
+    dates
+  };
+  if (bookingEmail) saveBookingForEmail(bookingEmail, booking);
+  saveClientPanelSubmission({
+    id: leadId,
+    submittedAt: submittedAt.toISOString(),
+    name: `${firstName} ${lastName}`.trim(),
+    firstName,
+    lastName,
+    email: submittedEmail,
+    phone,
+    street,
+    zip,
+    service: serviceText || 'General Inquiry',
+    dates,
+    message,
+    status: 'Pending',
+    accountEmail: currentUserEmail || '',
+    source: currentUserEmail ? 'Account' : 'Guest'
+  });
 
   // Reset form
   contactForm.reset();
-  selectedSlots = [];
-  calSelectedLabel.textContent = 'No slots selected';
-  buildPicker();
+  selectedDates = [];
+  selectedTimes = {};
+  if (calSelectedLabel) calSelectedLabel.textContent = 'Click dates to select (2-3)';
+  updateFormValue();
+  buildFormPicker();
+  renderCalendar();
+
+  sendSpinner.hidden = true;
+  sendSuccess.hidden = false;
+  if (sendSuccessBookedNote) sendSuccessBookedNote.hidden = !currentUserEmail;
+  if (sendSuccessAccountNote) sendSuccessAccountNote.hidden = !!currentUserEmail;
+  sendBtn.classList.add('btn-success');
 });
