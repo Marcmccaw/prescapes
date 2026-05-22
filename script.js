@@ -109,9 +109,12 @@ function setLoggedInUser(name) {
   updateUserAdminVisibility();
 }
 
-function logout() {
+async function logout() {
   isLoggedIn = false;
   currentUserEmail = null;
+  if (window.PrestigeFirebase) {
+    try { await window.PrestigeFirebase.signOut(); } catch (err) { console.warn('Firebase logout failed:', err); }
+  }
   localStorage.removeItem('pl_current_user');
   updateUserAdminVisibility();
   const btn = document.getElementById('open-auth');
@@ -175,6 +178,9 @@ function removeClientPanelSubmission(booking) {
     );
   });
   localStorage.setItem('pl_client_submissions', JSON.stringify(filtered));
+  if (window.PrestigeFirebase && bookingLeadId && filtered.length !== submissions.length) {
+    window.PrestigeFirebase.deleteSubmission(bookingLeadId).catch(err => console.warn('Could not delete Firebase submission:', err));
+  }
 }
 
 function openBooked() {
@@ -406,9 +412,13 @@ document.getElementById('confirm-delete-confirm')?.addEventListener('click', () 
     return;
   }
   const accounts = getAccounts();
+  const deletingEmail = currentUserEmail;
   delete accounts[currentUserEmail];
   localStorage.setItem('pl_accounts', JSON.stringify(accounts));
   localStorage.removeItem(`pl_bookings_${currentUserEmail}`);
+  if (window.PrestigeFirebase) {
+    window.PrestigeFirebase.deleteAccount(deletingEmail).catch(err => console.warn('Could not delete Firebase account:', err));
+  }
   localStorage.removeItem('pl_current_user');
   closeConfirmDelete();
   closeSettings();
@@ -585,6 +595,9 @@ function renderUsers() {
           delete fresh[email];
           localStorage.setItem('pl_accounts', JSON.stringify(fresh));
           localStorage.removeItem(`pl_bookings_${email}`);
+          if (window.PrestigeFirebase) {
+            window.PrestigeFirebase.deleteAccount(email).catch(err => console.warn('Could not delete Firebase account:', err));
+          }
           renderUsers();
         });
       });
@@ -787,21 +800,72 @@ if (authChangeEmail) authChangeEmail.addEventListener('click', () => { hideNoAcc
 if (authGotoSignup) authGotoSignup.addEventListener('click', () => { hideNoAccount(); switchTab('signup'); });
 
 // Login submit
-if (formLogin) formLogin.addEventListener('submit', e => {
+if (formLogin) formLogin.addEventListener('submit', async e => {
   e.preventDefault();
   const email = formLogin.querySelector('input[type="email"]').value.trim();
   const pass = formLogin.querySelector('input[type="password"]').value;
-  const accounts = getAccounts();
-  const account = accounts[email.toLowerCase()];
+  if (window.PrestigeFirebase) {
+    try { await window.PrestigeFirebase.ready; } catch {}
+  }
+  let accounts = getAccounts();
+  let account = accounts[email.toLowerCase()];
 
   // Remove any old error
   formLogin.querySelectorAll('.auth-error').forEach(el => el.remove());
+
+  if (!account && window.PrestigeFirebase) {
+    try {
+      account = await window.PrestigeFirebase.getAccount(email);
+      if (account) {
+        accounts = getAccounts();
+        accounts[email.toLowerCase()] = account;
+        localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+      }
+    } catch (err) {
+      console.warn('Could not check Firebase account:', err);
+    }
+  }
 
   if (!account) {
     showNoAccount("We don't have an account under that email address.");
     return;
   }
-  if (account.password !== pass) {
+  if (window.PrestigeFirebase) {
+    try {
+      await window.PrestigeFirebase.signIn(email, pass);
+      accounts = getAccounts();
+      account = accounts[email.toLowerCase()] || account;
+    } catch (err) {
+      if (err?.code === 'auth/user-not-found' && account?.password === pass) {
+        try {
+          await window.PrestigeFirebase.signUp(email, pass, {
+            name: account.name || '',
+            phone: account.phone || '',
+            role: normalizeRole(account.role),
+            street: account.street || '',
+            zip: account.zip || ''
+          });
+          accounts = getAccounts();
+          account = accounts[email.toLowerCase()] || account;
+        } catch (migrationErr) {
+          console.warn('Could not migrate local account to Firebase:', migrationErr);
+        }
+      } else {
+      const message = err?.code === 'auth/user-not-found'
+        ? "We don't have an account under that email address."
+        : 'Incorrect password. Please try again.';
+      if (err?.code === 'auth/user-not-found') {
+        showNoAccount(message);
+      } else {
+        const errEl = document.createElement('p');
+        errEl.className = 'auth-error';
+        errEl.textContent = message;
+        formLogin.querySelector('.auth-submit').before(errEl);
+      }
+      return;
+      }
+    }
+  } else if (account.password !== pass) {
     const err = document.createElement('p');
     err.className = 'auth-error';
     err.textContent = 'Incorrect password. Please try again.';
@@ -818,9 +882,12 @@ if (formLogin) formLogin.addEventListener('submit', e => {
 });
 
 // Signup submit
-if (formSignup) formSignup.addEventListener('submit', e => {
+if (formSignup) formSignup.addEventListener('submit', async e => {
   e.preventDefault();
   const inputs = formSignup.querySelectorAll('input');
+  if (window.PrestigeFirebase) {
+    try { await window.PrestigeFirebase.ready; } catch {}
+  }
   const accounts = getAccounts();
   const firstName = inputs[0].value.trim();
   const lastName = inputs[1].value.trim();
@@ -832,11 +899,19 @@ if (formSignup) formSignup.addEventListener('submit', e => {
 
   formSignup.querySelectorAll('.auth-error').forEach(el => el.remove());
 
-  if (accountExists(email)) {
+  let emailExists = accountExists(email);
+  if (!emailExists && window.PrestigeFirebase) {
+    try { emailExists = !!(await window.PrestigeFirebase.getAccount(email)); } catch {}
+  }
+  if (emailExists) {
     showLoginMessage('An account with this email already exists. Please log in.', email);
     return;
   }
-  if (phoneAccountExists(phone, accounts)) {
+  let phoneExists = phoneAccountExists(phone, accounts);
+  if (!phoneExists && window.PrestigeFirebase) {
+    try { phoneExists = !!(await window.PrestigeFirebase.findAccountByPhone(phone)); } catch {}
+  }
+  if (phoneExists) {
     showLoginMessage('A person with this phone number already has an account. Please log in.');
     return;
   }
@@ -847,7 +922,21 @@ if (formSignup) formSignup.addEventListener('submit', e => {
     inputs[5].after(err);
     return;
   }
-  const role = Object.keys(accounts).length === 0 ? 'dev' : 'client';
+  let role = Object.keys(accounts).length === 0 ? 'dev' : 'client';
+  if (window.PrestigeFirebase) {
+    try {
+      const result = await window.PrestigeFirebase.signUp(email, pass, { name, phone, role, street: '', zip: '' });
+      role = result.account.role;
+    } catch (err) {
+      const errEl = document.createElement('p');
+      errEl.className = 'auth-error';
+      errEl.textContent = err?.code === 'auth/email-already-in-use'
+        ? 'An account with this email already exists. Please log in.'
+        : 'Could not create account. Please try again.';
+      formSignup.querySelector('.auth-submit').before(errEl);
+      return;
+    }
+  }
   saveAccount(email, { name, phone, role, password: pass });
   currentUserEmail = email.toLowerCase();
   saveCurrentUser(currentUserEmail);

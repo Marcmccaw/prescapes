@@ -73,6 +73,9 @@ function deleteLead(id) {
 
   // Remove from submissions
   saveSubmissions(all.filter(s => s.id !== id));
+  if (window.PrestigeFirebase) {
+    window.PrestigeFirebase.deleteSubmission(id).catch(err => console.warn('Could not delete Firebase submission:', err));
+  }
 
   // Scan ALL booking keys in localStorage and remove this ticket id
   Object.keys(localStorage)
@@ -219,7 +222,10 @@ function createStatusSelect(lead) {
   return select;
 }
 
-function initPanel() {
+async function initPanel() {
+  if (window.PrestigeFirebase) {
+    try { await window.PrestigeFirebase.ready; } catch {}
+  }
   ensureInitialDev();
   const role = getCurrentRole();
   if (!ALLOWED_ROLES.includes(role)) {

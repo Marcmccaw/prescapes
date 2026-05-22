@@ -593,7 +593,10 @@ function getSelectedLeadFallback(id) {
   }
 }
 
-function init() {
+async function init() {
+  if (window.PrestigeFirebase) {
+    try { await window.PrestigeFirebase.ready; } catch {}
+  }
   if (!ALLOWED_ROLES.includes(getCurrentRole())) {
     renderDenied();
     return;
