@@ -2487,7 +2487,7 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 
 /* Hero */
 .about-hero {
-  background: var(--navy-dark);
+  background: linear-gradient(135deg, #001a37 0%, #0d3572 100%);
   padding: 5rem 1.5rem 4rem;
   text-align: center;
   position: relative;
