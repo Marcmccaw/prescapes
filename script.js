@@ -971,11 +971,33 @@ window.addEventListener('scroll', () => {
 
 // ---- Home link always active, scrolls to top ----
 const homeLink = document.getElementById('home-link');
+const contactNavLink = document.querySelector('.nav-link[href="#contact"]');
+const contactSection = document.getElementById('contact');
+
+function updateHomeNavActive() {
+  if (!homeLink || !contactNavLink || !contactSection) return;
+  const trigger = contactSection.offsetTop - (navbar?.offsetHeight || 0) - 80;
+  const contactActive = window.location.hash === '#contact' || window.scrollY >= trigger;
+  homeLink.classList.toggle('active', !contactActive);
+  contactNavLink.classList.toggle('active', contactActive);
+}
+
 if (homeLink) {
   homeLink.addEventListener('click', e => {
     e.preventDefault();
+    history.replaceState(null, '', window.location.pathname);
+    updateHomeNavActive();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
+}
+if (contactNavLink && contactSection) {
+  contactNavLink.addEventListener('click', () => {
+    contactNavLink.classList.add('active');
+    homeLink?.classList.remove('active');
+  });
+  window.addEventListener('scroll', updateHomeNavActive, { passive: true });
+  window.addEventListener('hashchange', updateHomeNavActive);
+  updateHomeNavActive();
 }
 
 // ---- Mobile hamburger ----

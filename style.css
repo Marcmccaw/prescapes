@@ -491,9 +491,10 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   padding: 1.5rem 1.25rem;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
 .contact-cal-right .calendar {
-  margin-top: auto;
+  margin-top: 1.25rem;
 }
 .contact-cal-right .calendar {
   background: var(--navy-mid);
@@ -2657,6 +2658,7 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   display: flex;
   gap: 0;
   align-items: flex-start;
+  --about-team-header-h: 4.9rem;
 }
 .about-team-split-col {
   flex: 1;
@@ -2675,7 +2677,11 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 }
 .about-team-header {
   text-align: center;
-  margin-bottom: 3rem;
+  min-height: var(--about-team-header-h);
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .about-team-header h2 {
   font-family: var(--font-head);
@@ -2819,11 +2825,17 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   gap: .4rem;
 }
 .about-team-tags span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: .72rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: .05em;
   padding: .28rem .7rem;
+  line-height: 1.2;
+  white-space: normal;
+  text-align: center;
   background: var(--blue-accent);
   color: var(--white);
   border-radius: var(--radius-sm);
@@ -2916,7 +2928,7 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 .btn-solid-blue {
   display: inline-block;
   padding: .8rem 2rem;
-  background: var(--blue-accent);
+  background: var(--navy-dark);
   color: var(--white);
   font-weight: 700;
   font-size: .88rem;
@@ -2926,7 +2938,7 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   transition: background var(--transition), transform var(--transition);
 }
 .btn-solid-blue:hover {
-  background: var(--blue-light);
+  background: var(--navy-light);
   transform: translateY(-2px);
 }
 
@@ -2961,21 +2973,21 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 .footer { background: var(--navy-dark); }
 .footer-main { padding: 2.5rem 0; border-bottom: 1px solid var(--border); }
 .footer-grid {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
   gap: 2rem;
 }
 .footer-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: center;
   gap: .75rem;
   color: rgba(255,255,255,.7);
   font-size: .9rem;
   line-height: 1.55;
-  flex: 1;
-  min-width: 180px;
+  min-width: 0;
+  text-align: left;
 }
 .footer-item svg { flex-shrink: 0; margin-top: .1rem; }
 .footer-item a {
@@ -2988,8 +3000,8 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 .footer-socials {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: .75rem;
-  flex: 0 0 auto;
 }
 .social-icon {
   width: 40px; height: 40px;
@@ -3027,8 +3039,8 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   .public-calendar-layout { grid-template-columns: 1fr; }
   .lightbox-prev { left: .5rem; }
   .lightbox-next { right: .5rem; }
-  .footer-grid { flex-direction: column; align-items: flex-start; }
-  .footer-socials { align-self: flex-start; }
+  .footer-grid { grid-template-columns: 1fr; }
+  .footer-item { justify-content: center; text-align: center; }
   .client-panel-header { align-items: flex-start; flex-direction: column; }
   .client-panel-controls { grid-template-columns: 1fr; }
   .client-lead-row { grid-template-columns: 1fr 1fr; }
