@@ -805,28 +805,29 @@ if (formLogin) formLogin.addEventListener('submit', async e => {
   // Remove any old error
   formLogin.querySelectorAll('.auth-error').forEach(el => el.remove());
 
-  if (!account && window.PrestigeFirebase) {
-    try {
-      account = await window.PrestigeFirebase.getAccount(email);
-      if (account) {
-        accounts = getAccounts();
-        accounts[email.toLowerCase()] = account;
-        localStorage.setItem('pl_accounts', JSON.stringify(accounts));
-      }
-    } catch (err) {
-      console.warn('Could not check Firebase account:', err);
-    }
-  }
-
-  if (!account) {
-    showNoAccount("We don't have an account under that email address.");
-    return;
-  }
   if (window.PrestigeFirebase) {
     try {
       await window.PrestigeFirebase.signIn(email, pass);
+      try {
+        account = await window.PrestigeFirebase.getAccount(email);
+      } catch (err) {
+        console.warn('Could not load Firebase account profile:', err);
+      }
       accounts = getAccounts();
-      account = accounts[email.toLowerCase()] || account;
+      if (account) {
+        accounts[email.toLowerCase()] = account;
+        localStorage.setItem('pl_accounts', JSON.stringify(accounts));
+      } else {
+        account = accounts[email.toLowerCase()] || {
+          name: email.split('@')[0],
+          phone: '',
+          role: 'client',
+          street: '',
+          zip: ''
+        };
+        saveAccount(email, account);
+        accounts = getAccounts();
+      }
     } catch (err) {
       if (err?.code === 'auth/user-not-found' && account?.password === pass) {
         try {
@@ -857,12 +858,18 @@ if (formLogin) formLogin.addEventListener('submit', async e => {
       return;
       }
     }
-  } else if (account.password !== pass) {
+  } else {
+    if (!account) {
+      showNoAccount("We don't have an account under that email address.");
+      return;
+    }
+    if (account.password !== pass) {
     const err = document.createElement('p');
     err.className = 'auth-error';
     err.textContent = 'Incorrect password. Please try again.';
     formLogin.querySelector('.auth-submit').before(err);
     return;
+    }
   }
   // Success
   currentUserEmail = email.toLowerCase();
