@@ -33,6 +33,55 @@ function getLeadStatus(lead) {
   return LEAD_STATUSES.includes(lead.status) ? lead.status : 'Pending';
 }
 
+function getQuoteService(lead, quote) {
+  const types = Array.isArray(quote?.types) ? quote.types.filter(Boolean) : [];
+  return types.length ? types.join(', ') : (lead.service || 'Quote');
+}
+
+function updateQuoteSyncMessage(message, isError = false) {
+  const saved = document.getElementById('q-saved');
+  if (!saved) return;
+  saved.textContent = message;
+  saved.style.color = isError ? '#E53E3E' : '';
+  saved.hidden = false;
+  setTimeout(() => {
+    saved.hidden = true;
+    saved.style.color = '';
+  }, isError ? 4500 : 2500);
+}
+
+async function syncQuoteCalendarEvent(lead) {
+  if (getLeadStatus(lead) !== 'Quoting') return null;
+  const quote = lead.quoting || {};
+  if (!quote.visitDate || !quote.visitTime) return null;
+
+  const response = await fetch('/api/create-quote-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      leadId: lead.id,
+      service: getQuoteService(lead, quote),
+      visitDate: quote.visitDate,
+      visitTime: quote.visitTime,
+      eventId: quote.googleEventId || ''
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Could not add quote to Google Calendar.');
+
+  const submissions = getSubmissions();
+  const idx = submissions.findIndex(item => item.id === lead.id);
+  if (idx >= 0) {
+    submissions[idx].quoting = {
+      ...(submissions[idx].quoting || {}),
+      googleEventId: data.id || quote.googleEventId || '',
+      googleEventLink: data.htmlLink || quote.googleEventLink || ''
+    };
+    localStorage.setItem('pl_client_submissions', JSON.stringify(submissions));
+  }
+  return data;
+}
+
 function formatDate(value) {
   if (!value) return 'Unknown date';
   return new Date(value).toLocaleString('en-US', {
@@ -59,8 +108,9 @@ function rowStatus(lead) {
     opt.selected = s === currentStatus;
     select.appendChild(opt);
   });
-  select.addEventListener('change', () => {
+  select.addEventListener('change', async () => {
     const val = select.value;
+    let updatedLead = null;
 
     // Update dropdown color
     select.className = `lead-status lead-status-${val.toLowerCase()}`;
@@ -68,7 +118,11 @@ function rowStatus(lead) {
     // Save status
     const submissions = JSON.parse(localStorage.getItem('pl_client_submissions') || '[]');
     const idx = submissions.findIndex(s => s.id === lead.id);
-    if (idx >= 0) { submissions[idx].status = val; localStorage.setItem('pl_client_submissions', JSON.stringify(submissions)); }
+    if (idx >= 0) {
+      submissions[idx].status = val;
+      updatedLead = submissions[idx];
+      localStorage.setItem('pl_client_submissions', JSON.stringify(submissions));
+    }
 
     // Quoting/Booked section
     const qs = document.getElementById('quoting-section');
@@ -94,6 +148,15 @@ function rowStatus(lead) {
     // Preferred Dates row — hide for Booked/Payment/Completed
     const prefRow = document.getElementById('pref-dates-row');
     if (prefRow) prefRow.hidden = ['Booked','Payment','Completed'].includes(val);
+
+    if (val === 'Quoting' && updatedLead?.quoting?.visitDate && updatedLead?.quoting?.visitTime) {
+      try {
+        await syncQuoteCalendarEvent(updatedLead);
+        updateQuoteSyncMessage('Saved and added to Google Calendar.');
+      } catch (err) {
+        updateQuoteSyncMessage(err.message || 'Saved, but Google Calendar did not sync.', true);
+      }
+    }
   });
   item.append(key, select);
   return item;
@@ -509,11 +572,12 @@ function renderLead(lead) {
   });
 
   // Save quoting details
-  document.getElementById('q-save')?.addEventListener('click', () => {
+  document.getElementById('q-save')?.addEventListener('click', async () => {
     const submissions = JSON.parse(localStorage.getItem('pl_client_submissions') || '[]');
     const idx = submissions.findIndex(s => s.id === lead.id);
     if (idx >= 0) {
       submissions[idx].quoting = {
+        ...(submissions[idx].quoting || {}),
         types: [...document.querySelectorAll('#q-type input:checked')].map(cb => cb.value),
         job: document.getElementById('q-job')?.value || '',
         price: document.getElementById('q-price')?.value.replace(/[^0-9.]/g, '') || '',
@@ -528,8 +592,20 @@ function renderLead(lead) {
         extras: document.getElementById('q-extras')?.value || ''
       };
       localStorage.setItem('pl_client_submissions', JSON.stringify(submissions));
-      const saved = document.getElementById('q-saved');
-      if (saved) { saved.hidden = false; setTimeout(() => saved.hidden = true, 2000); }
+      if (getLeadStatus(submissions[idx]) === 'Quoting') {
+        if (submissions[idx].quoting.visitDate && submissions[idx].quoting.visitTime) {
+          try {
+            await syncQuoteCalendarEvent(submissions[idx]);
+            updateQuoteSyncMessage('Saved and added to Google Calendar.');
+          } catch (err) {
+            updateQuoteSyncMessage(err.message || 'Saved, but Google Calendar did not sync.', true);
+          }
+        } else {
+          updateQuoteSyncMessage('Saved. Add a quote date and time to sync Google Calendar.');
+        }
+      } else {
+        updateQuoteSyncMessage('Saved.');
+      }
     }
   });
 

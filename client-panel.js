@@ -52,12 +52,48 @@ function getLeadStatus(lead) {
   return LEAD_STATUSES.includes(lead.status) ? lead.status : 'Pending';
 }
 
+function getQuoteService(lead, quote) {
+  const types = Array.isArray(quote?.types) ? quote.types.filter(Boolean) : [];
+  return types.length ? types.join(', ') : (lead.service || 'Quote');
+}
+
+async function syncQuoteCalendarEvent(lead) {
+  if (getLeadStatus(lead) !== 'Quoting') return null;
+  const quote = lead.quoting || {};
+  if (!quote.visitDate || !quote.visitTime) return null;
+  const response = await fetch('/api/create-quote-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      leadId: lead.id,
+      service: getQuoteService(lead, quote),
+      visitDate: quote.visitDate,
+      visitTime: quote.visitTime,
+      eventId: quote.googleEventId || ''
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Could not add quote to Google Calendar.');
+  const submissions = getSubmissions();
+  const idx = submissions.findIndex(item => item.id === lead.id);
+  if (idx >= 0) {
+    submissions[idx].quoting = {
+      ...(submissions[idx].quoting || {}),
+      googleEventId: data.id || quote.googleEventId || '',
+      googleEventLink: data.htmlLink || quote.googleEventLink || ''
+    };
+    saveSubmissions(submissions);
+  }
+  return data;
+}
+
 function updateLeadStatus(id, status) {
   const submissions = getSubmissions();
   const idx = submissions.findIndex(lead => lead.id === id);
-  if (idx < 0) return;
+  if (idx < 0) return null;
   submissions[idx] = { ...submissions[idx], status: getLeadStatus({ status }) };
   saveSubmissions(submissions);
+  return submissions[idx];
 }
 
 function deleteLead(id) {
@@ -174,7 +210,10 @@ function renderLeads() {
     statusSelect.addEventListener('click', e => e.stopPropagation());
     statusSelect.addEventListener('change', e => {
       e.stopPropagation();
-      updateLeadStatus(lead.id, statusSelect.value);
+      const updatedLead = updateLeadStatus(lead.id, statusSelect.value);
+      if (getLeadStatus(updatedLead || {}) === 'Quoting') {
+        syncQuoteCalendarEvent(updatedLead).catch(err => console.warn('Could not sync quote to Google Calendar:', err));
+      }
       renderLeads();
     });
     const actions = document.createElement('span');
