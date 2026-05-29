@@ -799,9 +799,6 @@ if (formLogin) formLogin.addEventListener('submit', async e => {
   e.preventDefault();
   const email = formLogin.querySelector('input[type="email"]').value.trim();
   const pass = formLogin.querySelector('input[type="password"]').value;
-  if (window.PrestigeFirebase) {
-    try { await window.PrestigeFirebase.ready; } catch {}
-  }
   let accounts = getAccounts();
   let account = accounts[email.toLowerCase()];
 
@@ -880,9 +877,6 @@ if (formLogin) formLogin.addEventListener('submit', async e => {
 if (formSignup) formSignup.addEventListener('submit', async e => {
   e.preventDefault();
   const inputs = formSignup.querySelectorAll('input');
-  if (window.PrestigeFirebase) {
-    try { await window.PrestigeFirebase.ready; } catch {}
-  }
   const accounts = getAccounts();
   const firstName = inputs[0].value.trim();
   const lastName = inputs[1].value.trim();

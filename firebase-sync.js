@@ -256,14 +256,14 @@
         createdAt: new Date().toISOString()
       }, { merge: true });
       originalSetItem('pl_current_user', cleanEmail);
-      await syncNow();
+      syncNow().catch(err => console.warn('Post-signup sync failed:', err));
       return { user: credential.user, account: { ...account, role } };
     },
     async signIn(email, password) {
       const cleanEmail = normalizeEmail(email);
       const credential = await auth.signInWithEmailAndPassword(cleanEmail, password);
       originalSetItem('pl_current_user', cleanEmail);
-      await syncNow();
+      syncNow().catch(err => console.warn('Post-login sync failed:', err));
       return credential.user;
     },
     async signOut() {
