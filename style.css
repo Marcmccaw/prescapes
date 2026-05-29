@@ -1949,6 +1949,26 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   border-radius: var(--radius-full);
   padding: .15rem 1.25rem;
 }
+.booked-status-quoting {
+  color: #60A5FA;
+  background: rgba(96,165,250,.12);
+  border-color: rgba(96,165,250,.32);
+}
+.booked-status-booked {
+  color: #34D399;
+  background: rgba(52,211,153,.12);
+  border-color: rgba(52,211,153,.32);
+}
+.booked-status-payment {
+  color: #FBBF24;
+  background: rgba(251,191,36,.12);
+  border-color: rgba(251,191,36,.34);
+}
+.booked-status-completed {
+  color: #A7F3D0;
+  background: rgba(16,185,129,.16);
+  border-color: rgba(167,243,208,.34);
+}
 .booked-item-date {
   font-size: .72rem;
   color: var(--text-muted);
@@ -1970,6 +1990,32 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   margin-bottom: .85rem;
 }
 .booked-item-slots svg { flex-shrink: 0; margin-top: .15rem; color: var(--blue-accent); }
+.booked-item-details {
+  display: grid;
+  gap: .5rem;
+  margin: .7rem 0 .9rem;
+}
+.booked-item-detail {
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: var(--radius-sm);
+  padding: .55rem .65rem;
+  background: rgba(255,255,255,.035);
+}
+.booked-item-detail span {
+  display: block;
+  color: var(--text-muted);
+  font-size: .66rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin-bottom: .18rem;
+}
+.booked-item-detail strong {
+  display: block;
+  color: rgba(255,255,255,.88);
+  font-size: .82rem;
+  line-height: 1.45;
+}
 .booked-item-actions {
   display: flex;
   gap: .5rem;

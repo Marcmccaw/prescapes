@@ -6,6 +6,119 @@ try {
   // ---- Helpers ----
   function getAccounts() { return JSON.parse(localStorage.getItem('pl_accounts') || '{}'); }
   function getBookings(email) { return JSON.parse(localStorage.getItem(`pl_bookings_${email}`) || '[]'); }
+  function getSubmissions() { return JSON.parse(localStorage.getItem('pl_client_submissions') || '[]'); }
+  function getLeadStatus(lead) {
+    if (lead?.status === 'Approved' || lead?.status === 'Quoteing') return 'Quoting';
+    return ['Pending', 'Quoting', 'Booked', 'Payment', 'Completed'].includes(lead?.status) ? lead.status : 'Pending';
+  }
+  function normalizePhone(value) { return String(value || '').replace(/\D/g, ''); }
+  function formatDateOnly(value) {
+    if (!value) return '';
+    const date = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function formatTimeOnly(value) {
+    if (!value) return '';
+    const [hours, minutes] = String(value).split(':').map(Number);
+    if (Number.isNaN(hours)) return value;
+    const suffix = hours >= 12 ? 'PM' : 'AM';
+    return `${hours % 12 || 12}:${String(minutes || 0).padStart(2, '0')} ${suffix}`;
+  }
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    }[char]));
+  }
+  function formatSubmitted(value) {
+    if (!value) return 'Unknown date';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function formatCustomerSchedule(lead) {
+    const status = getLeadStatus(lead);
+    const quote = lead.quoting || {};
+    if (['Booked', 'Payment', 'Completed'].includes(status)) {
+      const dates = Array.isArray(quote.jobDateValues) && quote.jobDateValues.length
+        ? quote.jobDateValues.map(formatDateOnly).join(', ')
+        : (Array.isArray(quote.jobDates) && quote.jobDates.length ? quote.jobDates.join(', ') : '');
+      const time = quote.timeStart || quote.timeEnd
+        ? `${formatTimeOnly(quote.timeStart) || 'Start TBD'} - ${formatTimeOnly(quote.timeEnd) || 'End TBD'}`
+        : '';
+      return [dates || 'Job dates not added yet', time].filter(Boolean).join(' | ');
+    }
+    if (status === 'Quoting') {
+      return [formatDateOnly(quote.visitDate) || 'Quote date not added yet', formatTimeOnly(quote.visitTime)].filter(Boolean).join(' | ');
+    }
+    return lead.dates || 'No dates selected';
+  }
+  function getCustomerBookingRows(booking) {
+    const status = getLeadStatus(booking);
+    const quote = booking.quoting || {};
+    if (booking.leadId || booking.id) {
+      if (status === 'Quoting') {
+        return [
+          ['Quote Date', formatDateOnly(quote.visitDate) || 'Not added yet'],
+          ['Quote Time', formatTimeOnly(quote.visitTime) || 'Not added yet'],
+          ['Job Type', Array.isArray(quote.types) && quote.types.length ? quote.types.join(', ') : (booking.service || 'General Inquiry')],
+          ['Notes', quote.notes || quote.job || 'No notes added yet']
+        ];
+      }
+      if (['Booked', 'Payment', 'Completed'].includes(status)) {
+        const dates = Array.isArray(quote.jobDateValues) && quote.jobDateValues.length
+          ? quote.jobDateValues.map(formatDateOnly).join(', ')
+          : (Array.isArray(quote.jobDates) && quote.jobDates.length ? quote.jobDates.join(', ') : '');
+        return [
+          ['Job Dates', dates || 'Not added yet'],
+          ['Work Time', quote.timeStart || quote.timeEnd ? `${formatTimeOnly(quote.timeStart) || 'Start TBD'} - ${formatTimeOnly(quote.timeEnd) || 'End TBD'}` : 'Not added yet'],
+          ['Job Details', quote.job || 'No job details added yet'],
+          ['Extras', quote.extras || 'No extras added yet']
+        ];
+      }
+    }
+    return [['Preferred Dates', booking.dates || 'No dates selected']];
+  }
+  function renderCustomerBookingRows(booking) {
+    return getCustomerBookingRows(booking).map(([label, value]) => `
+      <div class="ac-booked-detail">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+      </div>
+    `).join('');
+  }
+  function getCustomerBookings() {
+    if (!currentEmail) return [];
+    const account = getAccounts()[currentEmail] || {};
+    const phoneDigits = normalizePhone(account.phone);
+    const leadBookings = getSubmissions()
+      .filter(lead => {
+        const leadEmail = String(lead.email || '').toLowerCase();
+        const accountEmail = String(lead.accountEmail || '').toLowerCase();
+        const leadPhone = normalizePhone(lead.phone);
+        return leadEmail === currentEmail || accountEmail === currentEmail || (phoneDigits && leadPhone === phoneDigits);
+      })
+      .map(lead => ({
+        ...lead,
+        leadId: lead.id,
+        submittedOn: formatSubmitted(lead.submittedAt),
+        service: lead.service || 'General Inquiry',
+        dates: formatCustomerSchedule(lead),
+        status: getLeadStatus(lead)
+      }));
+    const leadIds = new Set(leadBookings.map(item => item.leadId || item.id).filter(Boolean));
+    const legacyBookings = getBookings(currentEmail)
+      .filter(booking => {
+        const id = booking.leadId || booking.id;
+        return !id || !leadIds.has(id);
+      })
+      .map(booking => ({ ...booking, status: booking.status || 'Pending', submittedOn: booking.submittedOn || 'Unknown date' }));
+    return [...leadBookings, ...legacyBookings].sort((a, b) => new Date(b.submittedAt || b.submittedOn || 0) - new Date(a.submittedAt || a.submittedOn || 0));
+  }
   function saveAccount(email, data) {
     const a = getAccounts(); a[email] = data;
     localStorage.setItem('pl_accounts', JSON.stringify(a));
@@ -98,8 +211,16 @@ try {
     .ac-del-btn:hover { background:rgba(252,129,129,.1); }
     .ac-booked-item { background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:.9rem;margin-bottom:.6rem; }
     .ac-booked-status { font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#F59E0B;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);border-radius:999px;padding:.15rem .75rem;display:inline-block;margin-bottom:.4rem; }
+    .ac-booked-status.quoting { color:#60A5FA;background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.32); }
+    .ac-booked-status.booked { color:#34D399;background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.32); }
+    .ac-booked-status.payment { color:#FBBF24;background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.34); }
+    .ac-booked-status.completed { color:#A7F3D0;background:rgba(16,185,129,.16);border-color:rgba(167,243,208,.34); }
     .ac-booked-service { color:#fff;font-weight:700;font-size:.92rem;margin-bottom:.25rem; }
     .ac-booked-dates { color:#8A9BB0;font-size:.8rem; }
+    .ac-booked-details { display:grid;gap:.45rem;margin-top:.65rem; }
+    .ac-booked-detail { border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:.5rem .6rem;background:rgba(255,255,255,.03); }
+    .ac-booked-detail span { display:block;color:#8A9BB0;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.15rem; }
+    .ac-booked-detail strong { display:block;color:rgba(255,255,255,.88);font-size:.8rem;line-height:1.45; }
   `;
   document.head.appendChild(style);
 
@@ -125,18 +246,23 @@ try {
   });
 
   // ---- BOOKED ----
-  function openBooked() {
+  async function openBooked() {
+    if (window.PrestigeFirebase) {
+      try { await window.PrestigeFirebase.syncNow(); } catch (err) { console.warn('Could not refresh bookings:', err); }
+    }
     const list = document.getElementById('ac-booked-list');
-    const bookings = getBookings(currentEmail);
+    const bookings = getCustomerBookings();
     list.innerHTML = '';
     if (!bookings.length) {
       list.innerHTML = '<p style="color:#8A9BB0;text-align:center;font-size:.88rem;padding:1rem 0;">No bookings yet.</p>';
     } else {
       bookings.forEach(b => {
+        const status = getLeadStatus(b);
         list.innerHTML += `<div class="ac-booked-item">
-          <span class="ac-booked-status">Pending</span>
+          <span class="ac-booked-status ${status.toLowerCase()}">${status}</span>
           <div class="ac-booked-service">${b.service || 'General Inquiry'}</div>
-          <div class="ac-booked-dates">${b.dates || 'No dates selected'}</div>
+          <div class="ac-booked-dates">Submitted ${b.submittedOn || 'Unknown date'}</div>
+          <div class="ac-booked-details">${renderCustomerBookingRows(b)}</div>
         </div>`;
       });
     }

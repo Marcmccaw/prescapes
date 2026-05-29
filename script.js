@@ -166,6 +166,129 @@ function saveClientPanelSubmission(submission) {
   submissions.unshift(submission);
   localStorage.setItem('pl_client_submissions', JSON.stringify(submissions));
 }
+function getLeadStatus(lead) {
+  if (lead?.status === 'Approved' || lead?.status === 'Quoteing') return 'Quoting';
+  return ['Pending', 'Quoting', 'Booked', 'Payment', 'Completed'].includes(lead?.status) ? lead.status : 'Pending';
+}
+function formatBookedDate(value) {
+  if (!value) return '';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function formatBookedTime(value) {
+  if (!value) return '';
+  const [hours, minutes] = String(value).split(':').map(Number);
+  if (Number.isNaN(hours)) return value;
+  const suffix = hours >= 12 ? 'PM' : 'AM';
+  return `${hours % 12 || 12}:${String(minutes || 0).padStart(2, '0')} ${suffix}`;
+}
+function escapeBookedHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, char => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[char]));
+}
+function formatSubmittedOn(value) {
+  if (!value) return 'Unknown date';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function formatCustomerSchedule(lead) {
+  const status = getLeadStatus(lead);
+  const quote = lead.quoting || {};
+  if (['Booked', 'Payment', 'Completed'].includes(status)) {
+    const dates = Array.isArray(quote.jobDateValues) && quote.jobDateValues.length
+      ? quote.jobDateValues.map(formatBookedDate).join(', ')
+      : (Array.isArray(quote.jobDates) && quote.jobDates.length ? quote.jobDates.join(', ') : '');
+    const time = quote.timeStart || quote.timeEnd
+      ? `${formatBookedTime(quote.timeStart) || 'Start TBD'} - ${formatBookedTime(quote.timeEnd) || 'End TBD'}`
+      : '';
+    return [dates || 'Job dates not added yet', time].filter(Boolean).join(' | ');
+  }
+  if (status === 'Quoting') {
+    const date = formatBookedDate(quote.visitDate);
+    const time = formatBookedTime(quote.visitTime);
+    return [date || 'Quote date not added yet', time].filter(Boolean).join(' | ');
+  }
+  return lead.dates || 'No dates selected';
+}
+function getCustomerBookingRows(booking) {
+  const status = getLeadStatus(booking);
+  const quote = booking.quoting || {};
+  if (booking.fromSubmission) {
+    if (status === 'Quoting') {
+      return [
+        ['Quote Date', formatBookedDate(quote.visitDate) || 'Not added yet'],
+        ['Quote Time', formatBookedTime(quote.visitTime) || 'Not added yet'],
+        ['Job Type', Array.isArray(quote.types) && quote.types.length ? quote.types.join(', ') : (booking.service || 'General Inquiry')],
+        ['Notes', quote.notes || quote.job || 'No notes added yet']
+      ];
+    }
+    if (['Booked', 'Payment', 'Completed'].includes(status)) {
+      const dates = Array.isArray(quote.jobDateValues) && quote.jobDateValues.length
+        ? quote.jobDateValues.map(formatBookedDate).join(', ')
+        : (Array.isArray(quote.jobDates) && quote.jobDates.length ? quote.jobDates.join(', ') : '');
+      return [
+        ['Job Dates', dates || 'Not added yet'],
+        ['Work Time', quote.timeStart || quote.timeEnd ? `${formatBookedTime(quote.timeStart) || 'Start TBD'} - ${formatBookedTime(quote.timeEnd) || 'End TBD'}` : 'Not added yet'],
+        ['Job Details', quote.job || 'No job details added yet'],
+        ['Extras', quote.extras || 'No extras added yet']
+      ];
+    }
+  }
+  return [
+    ['Preferred Dates', booking.dates || 'No dates selected']
+  ];
+}
+function renderCustomerBookingRows(booking) {
+  return getCustomerBookingRows(booking).map(([label, value]) => `
+    <div class="booked-item-detail">
+      <span>${escapeBookedHtml(label)}</span>
+      <strong>${escapeBookedHtml(value)}</strong>
+    </div>
+  `).join('');
+}
+function getCustomerBookings() {
+  if (!currentUserEmail) return [];
+  const account = getCurrentAccount();
+  const phoneDigits = normalizePhone(account?.phone);
+  const submissions = getClientPanelSubmissions();
+  const leadBookings = submissions
+    .filter(lead => {
+      const leadEmail = String(lead.email || '').toLowerCase();
+      const accountEmail = String(lead.accountEmail || '').toLowerCase();
+      const leadPhone = normalizePhone(lead.phone);
+      return leadEmail === currentUserEmail || accountEmail === currentUserEmail || (phoneDigits && leadPhone === phoneDigits);
+    })
+    .map(lead => ({
+      ...lead,
+      leadId: lead.id,
+      submittedOn: formatSubmittedOn(lead.submittedAt),
+      service: lead.service || 'General Inquiry',
+      dates: formatCustomerSchedule(lead),
+      status: getLeadStatus(lead),
+      fromSubmission: true
+    }));
+
+  const leadIds = new Set(leadBookings.map(item => item.leadId || item.id).filter(Boolean));
+  const legacyBookings = getBookings()
+    .filter(booking => {
+      const id = booking.leadId || booking.id;
+      return !id || !leadIds.has(id);
+    })
+    .map(booking => ({
+      ...booking,
+      status: booking.status || 'Pending',
+      submittedOn: booking.submittedOn || 'Unknown date'
+    }));
+
+  return [...leadBookings, ...legacyBookings].sort((a, b) => new Date(b.submittedAt || b.submittedOn || 0) - new Date(a.submittedAt || a.submittedOn || 0));
+}
 function removeClientPanelSubmission(booking) {
   const submissions = getClientPanelSubmissions();
   const bookingLeadId = booking.leadId || booking.id;
@@ -183,26 +306,28 @@ function removeClientPanelSubmission(booking) {
   }
 }
 
-function openBooked() {
-  const bookings = getBookings();
+async function openBooked() {
+  if (window.PrestigeFirebase) {
+    try { await window.PrestigeFirebase.syncNow(); } catch (err) { console.warn('Could not refresh bookings:', err); }
+  }
+  const bookings = getCustomerBookings();
   bookedList.innerHTML = '';
   if (bookings.length === 0) {
     bookedList.innerHTML = '<p class="booked-empty">No bookings yet.<br>Submit the Get in Touch form to schedule a visit.</p>';
   } else {
     bookings.forEach((b, i) => {
+      const status = getLeadStatus(b);
+      const canCustomerEdit = status === 'Pending';
       const item = document.createElement('div');
       item.className = 'booked-item';
       item.innerHTML = `
         <div class="booked-item-header">
-          <span class="booked-item-status">Pending</span>
+          <span class="booked-item-status booked-status-${status.toLowerCase()}">${status}</span>
           <span class="booked-item-date">Submitted ${b.submittedOn}</span>
         </div>
         <div class="booked-item-service">${b.service || 'General Inquiry'}</div>
-        <div class="booked-item-slots">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          ${b.dates || 'No dates selected'}
-        </div>
-        <div class="booked-item-actions">
+        <div class="booked-item-details">${renderCustomerBookingRows(b)}</div>
+        <div class="booked-item-actions" ${canCustomerEdit ? '' : 'hidden'}>
           <button class="booked-btn-edit" data-index="${i}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Edit
@@ -220,10 +345,12 @@ function openBooked() {
     bookedList.querySelectorAll('.booked-btn-cancel').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        const bookings = getBookings();
-        const [removedBooking] = bookings.splice(idx, 1);
+        const bookings = getCustomerBookings();
+        const removedBooking = bookings[idx];
+        if (getLeadStatus(removedBooking) !== 'Pending') return;
         if (removedBooking) removeClientPanelSubmission(removedBooking);
-        localStorage.setItem(`pl_bookings_${currentUserEmail}`, JSON.stringify(bookings));
+        const savedBookings = getBookings().filter(booking => (booking.leadId || booking.id) !== (removedBooking?.leadId || removedBooking?.id));
+        localStorage.setItem(`pl_bookings_${currentUserEmail}`, JSON.stringify(savedBookings));
         openBooked();
       });
     });
@@ -232,7 +359,8 @@ function openBooked() {
     bookedList.querySelectorAll('.booked-btn-edit').forEach(btn => {
       btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.index);
-        const b = getBookings()[idx];
+        const b = getCustomerBookings()[idx];
+        if (getLeadStatus(b) !== 'Pending') return;
         closeBooked();
         const serviceEl = document.getElementById('cf-service');
         if (serviceEl && b.service) {
