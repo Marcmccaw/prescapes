@@ -829,6 +829,13 @@ if (formLogin) formLogin.addEventListener('submit', async e => {
         accounts = getAccounts();
       }
     } catch (err) {
+      if (err?.code === 'auth/user-not-found' && window.PrestigeFirebase) {
+        try {
+          account = await window.PrestigeFirebase.getAccount(email);
+        } catch (profileErr) {
+          console.warn('Could not check Firebase account profile:', profileErr);
+        }
+      }
       if (err?.code === 'auth/user-not-found' && account?.password === pass) {
         try {
           await window.PrestigeFirebase.signUp(email, pass, {
