@@ -87,6 +87,54 @@ async function syncQuoteCalendarEvent(lead) {
   return data;
 }
 
+async function syncBookedCalendarEvents(lead) {
+  if (getLeadStatus(lead) !== 'Booked') return null;
+  const quote = lead.quoting || {};
+  const dates = Array.isArray(quote.jobDateValues) ? quote.jobDateValues.filter(Boolean) : [];
+  if (!dates.length || !quote.timeStart || !quote.timeEnd) return null;
+  const existingEvents = quote.googleBookedEvents || {};
+  const selectedDateSet = new Set(dates);
+  const deleteEventIds = Object.entries(existingEvents)
+    .filter(([date, event]) => !selectedDateSet.has(date) && event?.id)
+    .map(([, event]) => event.id);
+  const response = await fetch('/api/create-quote-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      leadId: lead.id,
+      service: getQuoteService(lead, quote),
+      deleteEventIds,
+      events: dates.map(date => ({
+        date,
+        startTime: quote.timeStart,
+        endTime: quote.timeEnd,
+        service: getQuoteService(lead, quote),
+        eventType: 'booked',
+        eventId: existingEvents[date]?.id || '',
+        description: quote.job || 'Scheduled work for Prestige Landscaping. Client details are stored in the Client Panel.'
+      }))
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Could not add booking to Google Calendar.');
+  const bookedEvents = {};
+  (data.events || []).forEach(event => {
+    if (event.date && event.id) {
+      bookedEvents[event.date] = { id: event.id, htmlLink: event.htmlLink || '' };
+    }
+  });
+  const submissions = getSubmissions();
+  const idx = submissions.findIndex(item => item.id === lead.id);
+  if (idx >= 0) {
+    submissions[idx].quoting = {
+      ...(submissions[idx].quoting || {}),
+      googleBookedEvents: bookedEvents
+    };
+    saveSubmissions(submissions);
+  }
+  return data;
+}
+
 function updateLeadStatus(id, status) {
   const submissions = getSubmissions();
   const idx = submissions.findIndex(lead => lead.id === id);
@@ -213,6 +261,9 @@ function renderLeads() {
       const updatedLead = updateLeadStatus(lead.id, statusSelect.value);
       if (getLeadStatus(updatedLead || {}) === 'Quoting') {
         syncQuoteCalendarEvent(updatedLead).catch(err => console.warn('Could not sync quote to Google Calendar:', err));
+      }
+      if (getLeadStatus(updatedLead || {}) === 'Booked') {
+        syncBookedCalendarEvents(updatedLead).catch(err => console.warn('Could not sync booked dates to Google Calendar:', err));
       }
       renderLeads();
     });

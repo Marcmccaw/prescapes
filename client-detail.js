@@ -82,6 +82,57 @@ async function syncQuoteCalendarEvent(lead) {
   return data;
 }
 
+async function syncBookedCalendarEvents(lead) {
+  if (getLeadStatus(lead) !== 'Booked') return null;
+  const quote = lead.quoting || {};
+  const dates = Array.isArray(quote.jobDateValues) ? quote.jobDateValues.filter(Boolean) : [];
+  if (!dates.length || !quote.timeStart || !quote.timeEnd) return null;
+
+  const existingEvents = quote.googleBookedEvents || {};
+  const selectedDateSet = new Set(dates);
+  const deleteEventIds = Object.entries(existingEvents)
+    .filter(([date, event]) => !selectedDateSet.has(date) && event?.id)
+    .map(([, event]) => event.id);
+  const response = await fetch('/api/create-quote-event', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      leadId: lead.id,
+      service: getQuoteService(lead, quote),
+      deleteEventIds,
+      events: dates.map(date => ({
+        date,
+        startTime: quote.timeStart,
+        endTime: quote.timeEnd,
+        service: getQuoteService(lead, quote),
+        eventType: 'booked',
+        eventId: existingEvents[date]?.id || '',
+        description: quote.job || 'Scheduled work for Prestige Landscaping. Client details are stored in the Client Panel.'
+      }))
+    })
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || 'Could not add booking to Google Calendar.');
+
+  const bookedEvents = {};
+  (data.events || []).forEach(event => {
+    if (event.date && event.id) {
+      bookedEvents[event.date] = { id: event.id, htmlLink: event.htmlLink || '' };
+    }
+  });
+
+  const submissions = getSubmissions();
+  const idx = submissions.findIndex(item => item.id === lead.id);
+  if (idx >= 0) {
+    submissions[idx].quoting = {
+      ...(submissions[idx].quoting || {}),
+      googleBookedEvents: bookedEvents
+    };
+    localStorage.setItem('pl_client_submissions', JSON.stringify(submissions));
+  }
+  return data;
+}
+
 function formatDate(value) {
   if (!value) return 'Unknown date';
   return new Date(value).toLocaleString('en-US', {
@@ -155,6 +206,14 @@ function rowStatus(lead) {
         updateQuoteSyncMessage('Saved and added to Google Calendar.');
       } catch (err) {
         updateQuoteSyncMessage(err.message || 'Saved, but Google Calendar did not sync.', true);
+      }
+    }
+    if (val === 'Booked' && updatedLead?.quoting?.jobDateValues?.length && updatedLead?.quoting?.timeStart && updatedLead?.quoting?.timeEnd) {
+      try {
+        await syncBookedCalendarEvents(updatedLead);
+        updateQuoteSyncMessage('Saved and added booked dates to Google Calendar.');
+      } catch (err) {
+        updateQuoteSyncMessage(err.message || 'Saved, but booked dates did not sync.', true);
       }
     }
   });
@@ -604,7 +663,20 @@ function renderLead(lead) {
           updateQuoteSyncMessage('Saved. Add a quote date and time to sync Google Calendar.');
         }
       } else {
-        updateQuoteSyncMessage('Saved.');
+        if (getLeadStatus(submissions[idx]) === 'Booked') {
+          if (submissions[idx].quoting.jobDateValues.length && submissions[idx].quoting.timeStart && submissions[idx].quoting.timeEnd) {
+            try {
+              await syncBookedCalendarEvents(submissions[idx]);
+              updateQuoteSyncMessage('Saved and added booked dates to Google Calendar.');
+            } catch (err) {
+              updateQuoteSyncMessage(err.message || 'Saved, but booked dates did not sync.', true);
+            }
+          } else {
+            updateQuoteSyncMessage('Saved. Add job dates, start time, and end time to sync Google Calendar.');
+          }
+        } else {
+          updateQuoteSyncMessage('Saved.');
+        }
       }
     }
   });

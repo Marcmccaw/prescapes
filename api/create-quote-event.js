@@ -91,6 +91,68 @@ function localDateTimeValue(date) {
   ].join(':');
 }
 
+async function saveCalendarEvent({ token, calendarId, eventId, event }) {
+  const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+  const url = eventId ? `${baseUrl}/${encodeURIComponent(eventId)}` : baseUrl;
+  const response = await fetch(url, {
+    method: eventId ? 'PATCH' : 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(event)
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || 'Could not create calendar event.');
+  }
+  return data;
+}
+
+async function deleteCalendarEvent({ token, calendarId, eventId }) {
+  if (!eventId) return;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`;
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok && response.status !== 404 && response.status !== 410) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error?.message || 'Could not delete old calendar event.');
+  }
+}
+
+function buildCalendarEvent({ leadId, service, description, date, startTime, endTime, eventType }) {
+  const start = new Date(`${date}T${startTime}:00`);
+  const end = endTime
+    ? new Date(`${date}T${endTime}:00`)
+    : addMinutes(start, 45);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+    throw new Error('Invalid event date or time.');
+  }
+
+  const typeLabel = eventType === 'booked' ? 'Booked Job' : 'Quote';
+  return {
+    summary: `${typeLabel} - ${service}`,
+    description: description || `${typeLabel} for Prestige Landscaping. Client details are stored in the Client Panel.`,
+    start: {
+      dateTime: `${date}T${startTime}:00`,
+      timeZone: DEFAULT_TIME_ZONE
+    },
+    end: {
+      dateTime: localDateTimeValue(end),
+      timeZone: DEFAULT_TIME_ZONE
+    },
+    extendedProperties: {
+      private: {
+        prestigeLeadId: leadId,
+        prestigeEventType: eventType
+      }
+    }
+  };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -100,65 +162,64 @@ module.exports = async function handler(req, res) {
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const leadId = cleanText(body.leadId, '');
-    const visitDate = cleanText(body.visitDate, '');
-    const visitTime = cleanText(body.visitTime, '');
     const service = cleanText(body.service, 'Quote');
-    const eventId = cleanText(body.eventId, '');
     const calendarId = process.env.GOOGLE_CALENDAR_ID || 'contact.presscapes@gmail.com';
 
-    if (!leadId || !visitDate || !visitTime) {
-      return json(res, 400, { error: 'A lead id, quote date, and quote time are required.' });
-    }
-
-    const start = new Date(`${visitDate}T${visitTime}:00`);
-    if (Number.isNaN(start.getTime())) {
-      return json(res, 400, { error: 'Invalid quote date or time.' });
-    }
-
-    const end = addMinutes(start, 45);
+    if (!leadId) return json(res, 400, { error: 'A lead id is required.' });
     const token = await getAccessToken();
-    const event = {
-      summary: `Quote - ${service}`,
-      description: 'Quote appointment for Prestige Landscaping. Client details are stored in the Client Panel.',
-      start: {
-        dateTime: `${visitDate}T${visitTime}:00`,
-        timeZone: DEFAULT_TIME_ZONE
-      },
-      end: {
-        dateTime: localDateTimeValue(end),
-        timeZone: DEFAULT_TIME_ZONE
-      },
-      extendedProperties: {
-        private: {
-          prestigeLeadId: leadId,
-          prestigeEventType: 'quote'
-        }
-      }
-    };
 
-    const baseUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
-    const url = eventId ? `${baseUrl}/${encodeURIComponent(eventId)}` : baseUrl;
-    const response = await fetch(url, {
-      method: eventId ? 'PATCH' : 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(event)
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return json(res, response.status, { error: data.error?.message || 'Could not create calendar event.' });
+    const deleteEventIds = Array.isArray(body.deleteEventIds) ? body.deleteEventIds.filter(Boolean) : [];
+    for (const eventId of deleteEventIds) {
+      await deleteCalendarEvent({ token, calendarId, eventId });
     }
 
-    return json(res, 200, {
-      id: data.id,
-      htmlLink: data.htmlLink,
-      start: data.start,
-      end: data.end
-    });
+    const items = Array.isArray(body.events) && body.events.length
+      ? body.events
+      : [{
+        date: body.visitDate,
+        startTime: body.visitTime,
+        endTime: '',
+        eventId: body.eventId,
+        eventType: 'quote',
+        description: 'Quote appointment for Prestige Landscaping. Client details are stored in the Client Panel.'
+      }];
+
+    if (!items.length) {
+      return json(res, 400, { error: 'At least one calendar event is required.' });
+    }
+
+    const savedEvents = [];
+    for (const item of items) {
+      const date = cleanText(item.date, '');
+      const startTime = cleanText(item.startTime, '');
+      const endTime = cleanText(item.endTime, '');
+      const eventType = cleanText(item.eventType, 'quote');
+      const event = buildCalendarEvent({
+        leadId,
+        service: cleanText(item.service, service),
+        description: cleanText(item.description, ''),
+        date,
+        startTime,
+        endTime,
+        eventType
+      });
+      const data = await saveCalendarEvent({
+        token,
+        calendarId,
+        eventId: cleanText(item.eventId, ''),
+        event
+      });
+      savedEvents.push({
+        date,
+        id: data.id,
+        htmlLink: data.htmlLink,
+        start: data.start,
+        end: data.end
+      });
+    }
+
+    return json(res, 200, { events: savedEvents, ...savedEvents[0] });
   } catch (err) {
-    return json(res, 500, { error: err.message || 'Could not create quote event.' });
+    return json(res, 500, { error: err.message || 'Could not create calendar event.' });
   }
 };
