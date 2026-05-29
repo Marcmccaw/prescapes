@@ -263,6 +263,7 @@ const dropdownSettings = document.getElementById('dropdown-settings');
 const dropdownLogout = document.getElementById('dropdown-logout');
 const dropdownUsers = document.getElementById('dropdown-users');
 const dropdownClientPanel = document.getElementById('dropdown-client-panel');
+const dropdownAdminCalendar = document.getElementById('dropdown-admin-calendar');
 // ---- Settings Modal ----
 const settingsBackdrop = document.getElementById('settings-backdrop');
 const settingsModal = document.getElementById('settings-modal');
@@ -337,6 +338,11 @@ function updateUserAdminVisibility() {
     dropdownClientPanel.hidden = !allowed;
     dropdownClientPanel.setAttribute('aria-hidden', String(!allowed));
     dropdownClientPanel.style.display = allowed ? '' : 'none';
+  }
+  if (dropdownAdminCalendar) {
+    dropdownAdminCalendar.hidden = !allowed;
+    dropdownAdminCalendar.setAttribute('aria-hidden', String(!allowed));
+    dropdownAdminCalendar.style.display = allowed ? '' : 'none';
   }
   if (!allowed && usersModal && !usersModal.hidden) closeUsers();
 }

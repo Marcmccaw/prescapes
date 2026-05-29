@@ -334,6 +334,7 @@ try {
       if (role === 'dev' || role === 'manager') {
         document.getElementById('nav-client-panel-link')?.removeAttribute('hidden');
         document.getElementById('nav-users-link')?.removeAttribute('hidden');
+        document.getElementById('nav-admin-calendar-link')?.removeAttribute('hidden');
       }
 
       // Dropdown actions
