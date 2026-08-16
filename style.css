@@ -3519,6 +3519,170 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 }
 
 /* ============================================
+   PRICING / SUBSCRIPTIONS
+   ============================================ */
+.pricing-section {
+  background: var(--white);
+  padding: 5rem 1.5rem;
+}
+.pricing-header {
+  text-align: center;
+  max-width: 640px;
+  margin: 0 auto 3rem;
+}
+.pricing-header h2 {
+  font-family: var(--font-head);
+  font-size: clamp(1.5rem, 3vw, 2.1rem);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--navy-dark);
+  margin: .5rem 0 .9rem;
+}
+.pricing-sub {
+  color: #5a6a80;
+  font-size: .95rem;
+  line-height: 1.65;
+}
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+.pricing-card {
+  position: relative;
+  background: var(--off-white);
+  border: 1px solid rgba(30,92,191,.14);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+.pricing-card-featured {
+  background: var(--navy-dark);
+  border-color: var(--navy-dark);
+  box-shadow: var(--shadow-card);
+}
+.pricing-badge {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--blue-accent);
+  color: var(--white);
+  font-size: .72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: .35rem .9rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.pricing-card h3 {
+  font-family: var(--font-head);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--navy-dark);
+  margin-bottom: .75rem;
+}
+.pricing-card-featured h3 { color: var(--white); }
+.pricing-price {
+  font-family: var(--font-head);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--blue-accent);
+  margin-bottom: 1.5rem;
+}
+.pricing-card-featured .pricing-price { color: var(--white); }
+.pricing-price span {
+  display: block;
+  font-family: var(--font-body);
+  font-size: .75rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #5a6a80;
+  margin-top: .3rem;
+}
+.pricing-card-featured .pricing-price span { color: rgba(255,255,255,.6); }
+.pricing-features {
+  list-style: none;
+  margin: 0 0 2rem;
+  padding: 0;
+  text-align: left;
+  flex: 1;
+}
+.pricing-features li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: .7rem;
+  font-size: .88rem;
+  color: #5a6a80;
+  line-height: 1.5;
+}
+.pricing-card-featured .pricing-features li { color: rgba(255,255,255,.75); }
+.pricing-features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: .5em;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--blue-accent);
+}
+.pricing-size-label {
+  display: block;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #5a6a80;
+  margin-bottom: .4rem;
+}
+.pricing-card-featured .pricing-size-label { color: rgba(255,255,255,.55); }
+.pricing-size-select {
+  width: 100%;
+  padding: .6rem .8rem;
+  margin-bottom: 1.25rem;
+  font-family: var(--font-body);
+  font-size: .88rem;
+  color: var(--navy-dark);
+  background: var(--white);
+  border: 1px solid rgba(30,92,191,.25);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.pricing-card-featured .pricing-size-select {
+  background: rgba(255,255,255,.06);
+  color: var(--white);
+  border-color: rgba(255,255,255,.25);
+}
+.pricing-unavailable {
+  font-size: .8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.paypal-btn-container {
+  margin-top: auto;
+  min-height: 45px;
+}
+.pricing-note {
+  text-align: center;
+  font-size: .8rem;
+  color: var(--text-muted);
+  margin-top: 2.5rem;
+}
+@media (max-width: 700px) {
+  .pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
+}
+
+/* ============================================
    FOOTER
    ============================================ */
 .footer { background: var(--navy-dark); }

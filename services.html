@@ -167,6 +167,51 @@
       </div>
     </section>
 
+    <!-- ── SUBSCRIPTION PLANS ── -->
+    <section class="pricing-section" id="subscriptions">
+      <div class="container">
+        <div class="pricing-header">
+          <p class="eyebrow-blue">Subscribe &amp; Save</p>
+          <h2>Recurring Mowing Plans</h2>
+          <p class="pricing-sub">Set it and forget it. Subscribe to automatic mowing service and we'll take care of the rest — manage or cancel anytime from your PayPal account.</p>
+        </div>
+        <div class="pricing-grid">
+
+          <div class="pricing-card" data-plan-key="biweekly">
+            <h3>Biweekly Mowing</h3>
+            <label class="pricing-size-label" for="size-select-biweekly">Property size</label>
+            <select class="pricing-size-select" id="size-select-biweekly"></select>
+            <p class="pricing-price"><span class="pricing-price-amount">—</span><span class="pricing-price-note">per visit, billed every 2 weeks</span></p>
+            <ul class="pricing-features">
+              <li>Mowing every other week</li>
+              <li>Edging along walkways &amp; driveways</li>
+              <li>Clippings cleared from hard surfaces</li>
+              <li>Cancel anytime</li>
+            </ul>
+            <div id="paypal-button-biweekly" class="paypal-btn-container"></div>
+          </div>
+
+          <div class="pricing-card pricing-card-featured" data-plan-key="weekly">
+            <span class="pricing-badge">Most Popular</span>
+            <h3>Weekly Mowing</h3>
+            <label class="pricing-size-label" for="size-select-weekly">Property size</label>
+            <select class="pricing-size-select" id="size-select-weekly"></select>
+            <p class="pricing-price"><span class="pricing-price-amount">—</span><span class="pricing-price-note">per visit, billed weekly</span></p>
+            <ul class="pricing-features">
+              <li>Mowing every week</li>
+              <li>Edging along walkways &amp; driveways</li>
+              <li>Clippings cleared from hard surfaces</li>
+              <li>Priority scheduling</li>
+              <li>Cancel anytime</li>
+            </ul>
+            <div id="paypal-button-weekly" class="paypal-btn-container"></div>
+          </div>
+
+        </div>
+        <p class="pricing-note">Payments are securely processed by PayPal. You can manage or cancel your subscription anytime from your PayPal account.</p>
+      </div>
+    </section>
+
     <!-- ── CTA ── -->
     <section class="about-cta">
       <div class="about-cta-inner">
@@ -233,5 +278,75 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="firebase-sync.js"></script>
   <script src="account.js"></script>
+
+  <!-- PayPal subscription buttons — see paypal-config.js to activate/update tiers -->
+  <script src="paypal-config.js"></script>
+  <script>
+    (function loadPayPalSdk() {
+      if (!PAYPAL_CLIENT_ID || PAYPAL_CLIENT_ID === 'YOUR_PAYPAL_CLIENT_ID') {
+        console.warn('PayPal subscriptions are not configured yet — add your Client ID in paypal-config.js');
+        return;
+      }
+      const sdk = document.createElement('script');
+      sdk.src = `https://www.paypal.com/sdk/js?client-id=${PAYPAL_CLIENT_ID}&vault=true&intent=subscription`;
+      sdk.onload = initPricingCards;
+      sdk.onerror = () => console.error('Failed to load the PayPal SDK.');
+      document.head.appendChild(sdk);
+    })();
+
+    let currentButtons = {}; // tracks the rendered paypal.Buttons instance per plan key, so we can tear down + re-render on size change
+
+    function renderSubscribeButton(planKey, containerId, planId) {
+      const container = document.getElementById(containerId);
+      if (typeof paypal === 'undefined' || !container) return;
+
+      container.innerHTML = '';
+
+      if (!planId || planId.startsWith('YOUR_')) {
+        container.innerHTML = '<p class="pricing-unavailable">This size isn\'t available online yet — please contact us for a quote.</p>';
+        return;
+      }
+
+      paypal.Buttons({
+        style: { shape: 'pill', color: 'blue', layout: 'vertical', label: 'subscribe' },
+        createSubscription: function (data, actions) {
+          return actions.subscription.create({ plan_id: planId });
+        },
+        onApprove: function (data) {
+          alert('Subscription successful! ID: ' + data.subscriptionID);
+        },
+        onError: function (err) {
+          console.error('PayPal subscription error:', err);
+          alert('Something went wrong starting your subscription. Please try again.');
+        }
+      }).render('#' + containerId);
+    }
+
+    function updateCard(planKey) {
+      const config = PAYPAL_PLANS[planKey];
+      const select = document.getElementById('size-select-' + planKey);
+      const card = document.querySelector(`.pricing-card[data-plan-key="${planKey}"]`);
+      const priceAmountEl = card.querySelector('.pricing-price-amount');
+      const tier = config.tiers[select.selectedIndex];
+
+      priceAmountEl.textContent = (tier.price !== null && tier.price !== undefined) ? `$${tier.price}` : 'Contact us';
+      renderSubscribeButton(planKey, 'paypal-button-' + planKey, tier.id);
+    }
+
+    function initPricingCards() {
+      Object.keys(PAYPAL_PLANS).forEach(function (planKey) {
+        const config = PAYPAL_PLANS[planKey];
+        const select = document.getElementById('size-select-' + planKey);
+        if (!select) return;
+
+        select.innerHTML = config.tiers.map(function (tier) {
+          return `<option>${tier.size}</option>`;
+        }).join('');
+
+        select.addEventListener('change', function () { updateCard(planKey); });
+        updateCard(planKey);
+      });
+    }
+  </script>
 </body>
 </html>
