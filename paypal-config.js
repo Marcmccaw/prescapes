@@ -27,17 +27,17 @@ const PAYPAL_PLANS = {
   weekly: {
     label: "Weekly Mowing",
     tiers: [
-      { size: "1/4 Acre", id: "P-3F115243GK999991FNJ5FWEQ", price: 50 },
-      { size: "1/2 Acre", id: "P-5YU16811RA9173935NJ5FZCY", price: 65 },
-      { size: "1 Acre",   id: "P-76622933XA348094MNJ5FZRA", price: 85 }
+      { size: "1/4 Acre", id: "P-3F115243GK999991FNJ5FWEQ", price: 200 },
+      { size: "1/2 Acre", id: "P-5YU16811RA9173935NJ5FZCY", price: 260 },
+      { size: "1 Acre",   id: "P-76622933XA348094MNJ5FZRA", price: 340 }
     ]
   },
   biweekly: {
     label: "Biweekly Mowing",
     tiers: [
-      { size: "1/4 Acre", id: "P-6J677994DT598901RNJ5F3NQ", price: 60 },
-      { size: "1/2 Acre", id: "P-28685506HH0940037NJ5F4PA", price: 75 },
-      { size: "1 Acre",   id: "P-8DM103676M649873BNJ5F5MQ", price: 90 }
+      { size: "1/4 Acre", id: "P-6J677994DT598901RNJ5F3NQ", price: 120 },
+      { size: "1/2 Acre", id: "P-28685506HH0940037NJ5F4PA", price: 150 },
+      { size: "1 Acre",   id: "P-8DM103676M649873BNJ5F5MQ", price: 180 }
     ]
   }
 };

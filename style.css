@@ -3663,6 +3663,11 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   color: var(--white);
   border-color: rgba(255,255,255,.25);
 }
+.pricing-card:not(.pricing-card-featured) .pricing-size-select {
+  background: var(--white);
+  color: var(--navy-dark);
+  border-color: rgba(30,92,191,.25);
+}
 .pricing-unavailable {
   font-size: .8rem;
   color: var(--text-muted);
@@ -3677,6 +3682,10 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   font-size: .8rem;
   color: var(--text-muted);
   margin-top: 2.5rem;
+}
+.pricing-manage {
+  text-align: center;
+  margin-top: 1.25rem;
 }
 @media (max-width: 700px) {
   .pricing-grid { grid-template-columns: 1fr; max-width: 420px; }
