@@ -3522,14 +3522,31 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
    PRICING / SUBSCRIPTIONS
    ============================================ */
 .pricing-section {
-  background: var(--white);
-  padding: 5rem 1.5rem;
+  position: relative;
+  background:
+    repeating-linear-gradient(
+      115deg,
+      rgba(30,92,191,.05) 0px,
+      rgba(30,92,191,.05) 46px,
+      transparent 46px,
+      transparent 92px
+    ),
+    var(--white);
+  padding: 5.5rem 1.5rem;
+  overflow: hidden;
 }
 .pricing-header {
+  position: relative;
   text-align: center;
   max-width: 640px;
   margin: 0 auto 3rem;
 }
+.pricing-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+}
+.pricing-eyebrow svg { color: var(--blue-accent); }
 .pricing-header h2 {
   font-family: var(--font-head);
   font-size: clamp(1.5rem, 3vw, 2.1rem);
@@ -3560,17 +3577,43 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   text-align: center;
   display: flex;
   flex-direction: column;
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.pricing-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(0,26,55,.1);
+  border-color: rgba(30,92,191,.3);
 }
 .pricing-card-featured {
   background: var(--navy-dark);
   border-color: var(--navy-dark);
   box-shadow: var(--shadow-card);
 }
+.pricing-card-featured::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--blue-accent), transparent 45%, transparent 65%, var(--blue-light));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: .8;
+}
+.pricing-card-featured:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 44px rgba(0,26,55,.4), 0 0 0 1px rgba(46,109,212,.3);
+}
 .pricing-badge {
   position: absolute;
   top: -13px;
   left: 50%;
   transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: .3rem;
   background: var(--blue-accent);
   color: var(--white);
   font-size: .72rem;
@@ -3580,6 +3623,7 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   padding: .35rem .9rem;
   border-radius: 999px;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(30,92,191,.4);
 }
 .pricing-card h3 {
   font-family: var(--font-head);
@@ -3593,13 +3637,21 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
 .pricing-card-featured h3 { color: var(--white); }
 .pricing-price {
   font-family: var(--font-head);
-  font-size: 2rem;
   font-weight: 700;
   color: var(--blue-accent);
   margin-bottom: 1.5rem;
 }
+.pricing-price-amount {
+  display: inline-block;
+  font-size: 2.4rem;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.pricing-price-amount.is-updating {
+  opacity: 0;
+  transform: translateY(4px);
+}
 .pricing-card-featured .pricing-price { color: var(--white); }
-.pricing-price span {
+.pricing-price-note {
   display: block;
   font-family: var(--font-body);
   font-size: .75rem;
@@ -3609,7 +3661,7 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   color: #5a6a80;
   margin-top: .3rem;
 }
-.pricing-card-featured .pricing-price span { color: rgba(255,255,255,.6); }
+.pricing-card-featured .pricing-price-note { color: rgba(255,255,255,.6); }
 .pricing-features {
   list-style: none;
   margin: 0 0 2rem;
@@ -3646,10 +3698,21 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   margin-bottom: .4rem;
 }
 .pricing-card-featured .pricing-size-label { color: rgba(255,255,255,.55); }
-.pricing-size-select {
-  width: 100%;
-  padding: .6rem .8rem;
+
+/* Custom dropdown (replaces native <select> so colors render consistently
+   across every browser — native select option-list styling can't be
+   reliably controlled with CSS). */
+.pricing-size-dropdown {
+  position: relative;
   margin-bottom: 1.25rem;
+}
+.pricing-size-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .6rem .8rem;
   font-family: var(--font-body);
   font-size: .88rem;
   color: var(--navy-dark);
@@ -3657,16 +3720,57 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   border: 1px solid rgba(30,92,191,.25);
   border-radius: var(--radius-sm);
   cursor: pointer;
+  transition: border-color var(--transition), box-shadow var(--transition);
 }
-.pricing-card-featured .pricing-size-select {
+.pricing-size-toggle:hover { border-color: var(--blue-accent); }
+.pricing-size-dropdown.is-open .pricing-size-toggle {
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 0 3px rgba(30,92,191,.15);
+}
+.pricing-card-featured .pricing-size-toggle {
   background: rgba(255,255,255,.06);
   color: var(--white);
   border-color: rgba(255,255,255,.25);
 }
-.pricing-card:not(.pricing-card-featured) .pricing-size-select {
+.pricing-card-featured .pricing-size-toggle:hover,
+.pricing-card-featured .pricing-size-dropdown.is-open .pricing-size-toggle {
+  border-color: var(--blue-light);
+  box-shadow: 0 0 0 3px rgba(46,109,212,.25);
+}
+.pricing-size-chevron { flex-shrink: 0; transition: transform var(--transition); }
+.pricing-size-toggle[aria-expanded="true"] .pricing-size-chevron { transform: rotate(180deg); }
+.pricing-size-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: .35rem;
+  list-style: none;
   background: var(--white);
+  border: 1px solid rgba(30,92,191,.18);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 10px 28px rgba(0,26,55,.16);
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+.pricing-size-dropdown.is-open .pricing-size-list {
+  opacity: 1;
+  transform: translateY(0);
+}
+.pricing-size-option {
+  padding: .55rem .7rem;
+  font-size: .88rem;
   color: var(--navy-dark);
-  border-color: rgba(30,92,191,.25);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.pricing-size-option:hover,
+.pricing-size-option.is-selected {
+  background: var(--off-white);
 }
 .pricing-unavailable {
   font-size: .8rem;

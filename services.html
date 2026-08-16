@@ -171,7 +171,10 @@
     <section class="pricing-section" id="subscriptions">
       <div class="container">
         <div class="pricing-header">
-          <p class="eyebrow-blue">Subscribe &amp; Save</p>
+          <p class="eyebrow-blue pricing-eyebrow">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22V10"/><path d="M12 14c-3 0-5-2-5-6"/><path d="M12 10c3 0 5-2 5-6"/></svg>
+            Subscribe &amp; Save
+          </p>
           <h2>Recurring Mowing Plans</h2>
           <p class="pricing-sub">Set it and forget it. Subscribe to automatic mowing service and we'll take care of the rest — manage or cancel anytime from your PayPal account.</p>
         </div>
@@ -179,8 +182,14 @@
 
           <div class="pricing-card" data-plan-key="biweekly">
             <h3>Biweekly Mowing</h3>
-            <label class="pricing-size-label" for="size-select-biweekly">Property size</label>
-            <select class="pricing-size-select" id="size-select-biweekly"></select>
+            <label class="pricing-size-label" id="size-label-biweekly">Property size</label>
+            <div class="pricing-size-dropdown" id="size-dropdown-biweekly" data-plan-key="biweekly">
+              <button type="button" class="pricing-size-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="size-label-biweekly">
+                <span class="pricing-size-toggle-label">Loading…</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="pricing-size-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <ul class="pricing-size-list" role="listbox" hidden></ul>
+            </div>
             <p class="pricing-price"><span class="pricing-price-amount">—</span><span class="pricing-price-note">per month, billed monthly (2 mowing visits)</span></p>
             <ul class="pricing-features">
               <li>Mowing every other week</li>
@@ -192,10 +201,19 @@
           </div>
 
           <div class="pricing-card pricing-card-featured" data-plan-key="weekly">
-            <span class="pricing-badge">Most Popular</span>
+            <span class="pricing-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 15v4M8 22h8M5 12a7 7 0 0114 0"/></svg>
+              Most Popular
+            </span>
             <h3>Weekly Mowing</h3>
-            <label class="pricing-size-label" for="size-select-weekly">Property size</label>
-            <select class="pricing-size-select" id="size-select-weekly"></select>
+            <label class="pricing-size-label" id="size-label-weekly">Property size</label>
+            <div class="pricing-size-dropdown" id="size-dropdown-weekly" data-plan-key="weekly">
+              <button type="button" class="pricing-size-toggle" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="size-label-weekly">
+                <span class="pricing-size-toggle-label">Loading…</span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="pricing-size-chevron"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <ul class="pricing-size-list" role="listbox" hidden></ul>
+            </div>
             <p class="pricing-price"><span class="pricing-price-amount">—</span><span class="pricing-price-note">per month, billed monthly (4 mowing visits)</span></p>
             <ul class="pricing-features">
               <li>Mowing every week</li>
@@ -297,8 +315,6 @@
       document.head.appendChild(sdk);
     })();
 
-    let currentButtons = {}; // tracks the rendered paypal.Buttons instance per plan key, so we can tear down + re-render on size change
-
     function renderSubscribeButton(planKey, containerId, planId) {
       const container = document.getElementById(containerId);
       if (typeof paypal === 'undefined' || !container) return;
@@ -325,30 +341,76 @@
       }).render('#' + containerId);
     }
 
-    function updateCard(planKey) {
+    function selectTier(planKey, tierIndex) {
       const config = PAYPAL_PLANS[planKey];
-      const select = document.getElementById('size-select-' + planKey);
+      const tier = config.tiers[tierIndex];
+      const dropdown = document.getElementById('size-dropdown-' + planKey);
       const card = document.querySelector(`.pricing-card[data-plan-key="${planKey}"]`);
       const priceAmountEl = card.querySelector('.pricing-price-amount');
-      const tier = config.tiers[select.selectedIndex];
 
-      priceAmountEl.textContent = (tier.price !== null && tier.price !== undefined) ? `$${tier.price}` : 'Contact us';
+      dropdown.dataset.selectedIndex = tierIndex;
+      dropdown.querySelector('.pricing-size-toggle-label').textContent = tier.size;
+      dropdown.querySelectorAll('.pricing-size-option').forEach(function (li, i) {
+        li.setAttribute('aria-selected', i === tierIndex ? 'true' : 'false');
+        li.classList.toggle('is-selected', i === tierIndex);
+      });
+
+      priceAmountEl.classList.add('is-updating');
+      window.setTimeout(function () {
+        priceAmountEl.textContent = (tier.price !== null && tier.price !== undefined) ? `$${tier.price}` : 'Contact us';
+        priceAmountEl.classList.remove('is-updating');
+      }, 140);
+
       renderSubscribeButton(planKey, 'paypal-button-' + planKey, tier.id);
     }
 
-    function initPricingCards() {
-      Object.keys(PAYPAL_PLANS).forEach(function (planKey) {
-        const config = PAYPAL_PLANS[planKey];
-        const select = document.getElementById('size-select-' + planKey);
-        if (!select) return;
+    function closeDropdown(dropdown) {
+      dropdown.classList.remove('is-open');
+      dropdown.querySelector('.pricing-size-toggle').setAttribute('aria-expanded', 'false');
+      window.setTimeout(function () {
+        if (!dropdown.classList.contains('is-open')) dropdown.querySelector('.pricing-size-list').hidden = true;
+      }, 160);
+    }
 
-        select.innerHTML = config.tiers.map(function (tier) {
-          return `<option>${tier.size}</option>`;
-        }).join('');
+    function closeAllDropdowns() {
+      document.querySelectorAll('.pricing-size-dropdown').forEach(closeDropdown);
+    }
 
-        select.addEventListener('change', function () { updateCard(planKey); });
-        updateCard(planKey);
+    function buildDropdown(planKey) {
+      const config = PAYPAL_PLANS[planKey];
+      const dropdown = document.getElementById('size-dropdown-' + planKey);
+      const toggle = dropdown.querySelector('.pricing-size-toggle');
+      const list = dropdown.querySelector('.pricing-size-list');
+      if (!dropdown) return;
+
+      list.innerHTML = config.tiers.map(function (tier, i) {
+        return `<li class="pricing-size-option" role="option" data-index="${i}" aria-selected="false">${tier.size}</li>`;
+      }).join('');
+
+      toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.contains('is-open');
+        closeAllDropdowns();
+        if (!isOpen) {
+          list.hidden = false;
+          requestAnimationFrame(function () { dropdown.classList.add('is-open'); });
+          toggle.setAttribute('aria-expanded', 'true');
+        }
       });
+
+      list.querySelectorAll('.pricing-size-option').forEach(function (li) {
+        li.addEventListener('click', function () {
+          selectTier(planKey, parseInt(li.dataset.index, 10));
+          closeDropdown(dropdown);
+        });
+      });
+
+      selectTier(planKey, 0);
+    }
+
+    function initPricingCards() {
+      Object.keys(PAYPAL_PLANS).forEach(buildDropdown);
+      document.addEventListener('click', closeAllDropdowns);
     }
   </script>
 </body>
