@@ -178,6 +178,26 @@
           <h2>Recurring Mowing Plans</h2>
           <p class="pricing-sub">Set it and forget it. Subscribe to automatic mowing service and we'll take care of the rest — manage or cancel anytime from your PayPal account.</p>
         </div>
+
+        <div class="pricing-details-form" id="pricing-details-form">
+          <p class="pricing-details-title">Your service details</p>
+          <p class="pricing-details-sub">We'll add your recurring mowing visits to our schedule as soon as you subscribe.</p>
+          <div class="pricing-details-grid">
+            <div class="pricing-field">
+              <label for="sub-name">Full name</label>
+              <input type="text" id="sub-name" placeholder="Jane Doe" autocomplete="name" />
+            </div>
+            <div class="pricing-field">
+              <label for="sub-address">Property address</label>
+              <input type="text" id="sub-address" placeholder="123 Main St, Your Town, NJ" autocomplete="street-address" />
+            </div>
+            <div class="pricing-field">
+              <label for="sub-start-date">First visit date</label>
+              <input type="date" id="sub-start-date" />
+            </div>
+          </div>
+        </div>
+
         <div class="pricing-grid">
 
           <div class="pricing-card" data-plan-key="biweekly">
@@ -315,7 +335,58 @@
       document.head.appendChild(sdk);
     })();
 
-    function renderSubscribeButton(planKey, containerId, planId) {
+    function getServiceDetails() {
+      const nameEl = document.getElementById('sub-name');
+      const addressEl = document.getElementById('sub-address');
+      const dateEl = document.getElementById('sub-start-date');
+
+      const name = nameEl.value.trim();
+      const address = addressEl.value.trim();
+      const startDate = dateEl.value;
+
+      if (!name || !address || !startDate) {
+        document.getElementById('pricing-details-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        [nameEl, addressEl, dateEl].forEach(function (el) {
+          el.classList.toggle('has-error', !el.value.trim());
+        });
+        alert('Please fill in your name, address, and first visit date before subscribing — this is how we get your recurring mowing visits on the schedule.');
+        return null;
+      }
+
+      [nameEl, addressEl, dateEl].forEach(function (el) { el.classList.remove('has-error'); });
+      return { name, address, startDate };
+    }
+
+    function syncSubscriptionToCalendar(planKey, tier, details, subscriptionId) {
+      fetch('/api/create-subscription-event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: subscriptionId,
+          frequency: planKey,
+          size: tier.size,
+          price: tier.price,
+          customerName: details.name,
+          address: details.address,
+          startDate: details.startDate
+        })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (result) {
+          if (result && result.error) {
+            console.error('Calendar sync error:', result.error);
+            alert('Your subscription is active, but we couldn\'t automatically add it to the schedule. We\'ll add it manually — no action needed from you.');
+          } else {
+            alert('You\'re all set! Your ' + (planKey === 'biweekly' ? 'biweekly' : 'weekly') + ' mowing visits are now on our schedule starting ' + details.startDate + '.');
+          }
+        })
+        .catch(function (err) {
+          console.error('Calendar sync request failed:', err);
+          alert('Your subscription is active, but we couldn\'t automatically add it to the schedule. We\'ll add it manually — no action needed from you.');
+        });
+    }
+
+    function renderSubscribeButton(planKey, containerId, planId, tier) {
       const container = document.getElementById(containerId);
       if (typeof paypal === 'undefined' || !container) return;
 
@@ -326,13 +397,20 @@
         return;
       }
 
+      let capturedDetails = null;
+
       paypal.Buttons({
         style: { shape: 'pill', color: 'blue', layout: 'vertical', label: 'subscribe' },
         createSubscription: function (data, actions) {
+          capturedDetails = getServiceDetails();
+          if (!capturedDetails) return Promise.reject(new Error('Missing service details'));
           return actions.subscription.create({ plan_id: planId });
         },
         onApprove: function (data) {
           alert('Subscription successful! ID: ' + data.subscriptionID);
+          if (capturedDetails) {
+            syncSubscriptionToCalendar(planKey, tier, capturedDetails, data.subscriptionID);
+          }
         },
         onError: function (err) {
           console.error('PayPal subscription error:', err);
@@ -361,7 +439,7 @@
         priceAmountEl.classList.remove('is-updating');
       }, 140);
 
-      renderSubscribeButton(planKey, 'paypal-button-' + planKey, tier.id);
+      renderSubscribeButton(planKey, 'paypal-button-' + planKey, tier.id, tier);
     }
 
     function closeDropdown(dropdown) {
@@ -411,6 +489,13 @@
     function initPricingCards() {
       Object.keys(PAYPAL_PLANS).forEach(buildDropdown);
       document.addEventListener('click', closeAllDropdowns);
+
+      const dateEl = document.getElementById('sub-start-date');
+      if (dateEl) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        dateEl.min = tomorrow.toISOString().slice(0, 10);
+      }
     }
   </script>
 </body>

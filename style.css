@@ -3560,6 +3560,65 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   font-size: .95rem;
   line-height: 1.65;
 }
+.pricing-details-form {
+  max-width: 800px;
+  margin: 0 auto 2.5rem;
+  background: var(--off-white);
+  border: 1px solid rgba(30,92,191,.14);
+  border-radius: var(--radius-lg);
+  padding: 1.75rem 2rem;
+}
+.pricing-details-title {
+  font-family: var(--font-head);
+  font-size: .95rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--navy-dark);
+  margin-bottom: .3rem;
+}
+.pricing-details-sub {
+  font-size: .85rem;
+  color: #5a6a80;
+  margin-bottom: 1.25rem;
+}
+.pricing-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+.pricing-field label {
+  display: block;
+  font-size: .72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #5a6a80;
+  margin-bottom: .4rem;
+}
+.pricing-field input {
+  width: 100%;
+  padding: .6rem .8rem;
+  font-family: var(--font-body);
+  font-size: .88rem;
+  color: var(--navy-dark);
+  background: var(--white);
+  border: 1px solid rgba(30,92,191,.25);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.pricing-field input:focus {
+  outline: none;
+  border-color: var(--blue-accent);
+  box-shadow: 0 0 0 3px rgba(30,92,191,.15);
+}
+.pricing-field input.has-error {
+  border-color: #d64545;
+  box-shadow: 0 0 0 3px rgba(214,69,69,.14);
+}
+@media (max-width: 700px) {
+  .pricing-details-grid { grid-template-columns: 1fr; }
+}
 .pricing-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
