@@ -324,8 +324,28 @@
   <script src="firebase-sync.js"></script>
   <script src="account.js"></script>
 
-  <!-- Subscription plan pricing/config -->
-  <script src="subscription-plans.js"></script>
+
+  <!-- Subscription plan pricing/config — inlined to avoid caching issues -->
+  <script>
+  const SUBSCRIPTION_PLANS = {
+    weekly: {
+      label: "Weekly Mowing",
+      tiers: [
+        { size: "1/4 Acre", price: 200 },
+        { size: "1/2 Acre", price: 260 },
+        { size: "1 Acre",   price: 340 }
+      ]
+    },
+    biweekly: {
+      label: "Biweekly Mowing",
+      tiers: [
+        { size: "1/4 Acre", price: 0.50 },
+        { size: "1/2 Acre", price: 150 },
+        { size: "1 Acre",   price: 180 }
+      ]
+    }
+  };
+  </script>
   <script>
     function getServiceDetails() {
       const nameEl = document.getElementById('sub-name');
