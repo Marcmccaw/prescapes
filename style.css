@@ -3840,6 +3840,23 @@ button { font-family: var(--font-body); cursor: pointer; border: none; backgroun
   margin-top: auto;
   min-height: 45px;
 }
+.pricing-subscribe-btn {
+  width: 100%;
+  padding: .85rem 1.5rem;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: .88rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--white);
+  background: var(--blue-accent);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition), opacity var(--transition);
+}
+.pricing-subscribe-btn:hover { background: var(--blue-light); transform: translateY(-2px); }
+.pricing-subscribe-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 .pricing-note {
   text-align: center;
   font-size: .8rem;
