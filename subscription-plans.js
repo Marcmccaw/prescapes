@@ -25,7 +25,7 @@ const SUBSCRIPTION_PLANS = {
   biweekly: {
     label: "Biweekly Mowing",
     tiers: [
-      { size: "1/4 Acre", price: 0.01 },
+      { size: "1/4 Acre", price: 120 },
       { size: "1/2 Acre", price: 150 },
       { size: "1 Acre",   price: 180 }
     ]

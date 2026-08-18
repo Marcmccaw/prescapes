@@ -246,9 +246,13 @@
           </div>
 
         </div>
-        <p class="pricing-note">Payments are securely processed by PayPal. You can manage or cancel your subscription anytime from your PayPal account.</p>
-        <div class="pricing-manage">
-          <a href="https://www.paypal.com/myaccount/autopay/" target="_blank" rel="noopener" class="btn-solid-blue">Manage or Cancel My Subscription</a>
+        <p class="pricing-note">Payments are securely processed by Stripe. You can manage or cancel your subscription anytime below.</p>
+        <div class="pricing-manage" id="pricing-manage">
+          <p class="pricing-manage-label">Need to manage or cancel an existing subscription?</p>
+          <div class="pricing-manage-row">
+            <input type="email" id="manage-email" placeholder="Email you used to subscribe" autocomplete="email" />
+            <button type="button" id="manage-subscription-btn" class="btn-solid-blue">Manage My Subscription</button>
+          </div>
         </div>
       </div>
     </section>
@@ -471,9 +475,51 @@
       selectTier(planKey, 0);
     }
 
+    function initManageSubscription() {
+      const btn = document.getElementById('manage-subscription-btn');
+      const emailEl = document.getElementById('manage-email');
+      if (!btn || !emailEl) return;
+
+      btn.addEventListener('click', function () {
+        const email = emailEl.value.trim();
+        if (!email) {
+          emailEl.classList.add('has-error');
+          alert('Please enter the email you used to subscribe.');
+          return;
+        }
+        emailEl.classList.remove('has-error');
+
+        btn.disabled = true;
+        const originalLabel = btn.textContent;
+        btn.textContent = 'Looking up your subscription…';
+
+        fetch('/api/create-portal-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email, siteUrl: window.location.origin })
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (result) {
+            if (result && result.url) {
+              window.location.href = result.url;
+            } else {
+              alert(result && result.error ? result.error : 'Something went wrong. Please try again.');
+              btn.disabled = false;
+              btn.textContent = originalLabel;
+            }
+          })
+          .catch(function () {
+            alert('Something went wrong. Please try again.');
+            btn.disabled = false;
+            btn.textContent = originalLabel;
+          });
+      });
+    }
+
     function initPricingCards() {
       Object.keys(SUBSCRIPTION_PLANS).forEach(buildDropdown);
       document.addEventListener('click', closeAllDropdowns);
+      initManageSubscription();
 
       const dateEl = document.getElementById('sub-start-date');
       if (dateEl) {
